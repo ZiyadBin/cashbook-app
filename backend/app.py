@@ -129,7 +129,21 @@ def get_summary():
 @app.route('/')
 def home():
     return jsonify({"message": "Cash Book API is running!", "status": "OK"})
+from flask import send_from_directory
+import os
 
+# Serve frontend static files
+@app.route('/')
+def serve_frontend():
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return send_from_directory('../frontend', path)
+
+@app.route('/login')
+def serve_login():
+    return send_from_directory('../frontend', 'login.html')
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
