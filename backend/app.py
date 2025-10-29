@@ -122,15 +122,15 @@ def get_summary():
 # Serve frontend static files
 @app.route('/')
 def serve_frontend():
-    return send_from_directory('../frontend', 'index.html')
+    return send_from_directory('frontend', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static_files(path):
-    return send_from_directory('../frontend', path)
+    return send_from_directory('frontend', path)
 
 @app.route('/login')
 def serve_login():
-    return send_from_directory('../frontend', 'login.html')
+    return send_from_directory('frontend', 'login.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
