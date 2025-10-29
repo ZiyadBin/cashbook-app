@@ -10,7 +10,8 @@ from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 import uuid
 from datetime import datetime
 import os
-
+from flask import send_from_directory
+import os
 from config import Config
 from models import users_db, transactions_db, Transaction
 from auth import authenticate_user
