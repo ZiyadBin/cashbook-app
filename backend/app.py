@@ -1,17 +1,10 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 import uuid
 from datetime import datetime
 import os
-from flask import send_from_directory
-import os
+
 from config import Config
 from models import users_db, transactions_db, Transaction
 from auth import authenticate_user
@@ -107,7 +100,6 @@ def get_summary():
         cash_out = sum(t.amount for t in user_transactions if t.type == 'OUT')
         balance = cash_in - cash_out
         
-        # Category breakdown
         categories = {}
         for t in user_transactions:
             if t.category not in categories:
@@ -127,12 +119,6 @@ def get_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/')
-def home():
-    return jsonify({"message": "Cash Book API is running!", "status": "OK"})
-from flask import send_from_directory
-import os
-
 # Serve frontend static files
 @app.route('/')
 def serve_frontend():
@@ -145,7 +131,7 @@ def serve_static_files(path):
 @app.route('/login')
 def serve_login():
     return send_from_directory('../frontend', 'login.html')
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
