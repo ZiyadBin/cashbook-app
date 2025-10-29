@@ -9,6 +9,3 @@ cmds = ["echo 'Build completed'"]
 
 [start]
 cmd = "cd backend && gunicorn app:app --bind 0.0.0.0:$PORT"
-
-[providers.python]
-version = "3.11"
