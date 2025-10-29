@@ -10,7 +10,7 @@ RUN pip install -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Copy frontend files
+# Copy frontend files to app/frontend/
 COPY frontend/ ./frontend/
 
 CMD gunicorn app:app --bind 0.0.0.0:$PORT
