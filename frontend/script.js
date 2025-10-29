@@ -1,7 +1,5 @@
 // For development - will update to your Heroku URL after deployment
-const API_BASE = window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000/api' 
-    : 'https://your-cashbook-backend.herokuapp.com/api';
+const API_BASE = '/api';
 
 let token = localStorage.getItem('token');
 let currentUser = localStorage.getItem('username');
