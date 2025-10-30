@@ -132,6 +132,90 @@ def serve_static_files(path):
 def serve_login():
     return send_from_directory('frontend', 'login.html')
 
+@app.route('/api/dashboard')
+@jwt_required()
+def get_dashboard():
+    try:
+        current_user = get_jwt_identity()
+        user_transactions = [t for t in transactions_db if t.user_id == current_user]
+        
+        # Get filters from query parameters
+        type_filter = request.args.get('type', 'ALL')
+        bank_filter = request.args.get('bank', 'ALL')
+        
+        # Apply filters
+        filtered_transactions = user_transactions
+        if type_filter != 'ALL':
+            filtered_transactions = [t for t in filtered_transactions if t.type == type_filter]
+        if bank_filter != 'ALL':
+            filtered_transactions = [t for t in filtered_transactions if t.bank_cash == bank_filter]
+        
+        # Calculate summary
+        cash_in = sum(t.amount for t in filtered_transactions if t.type == 'IN')
+        cash_out = sum(t.amount for t in filtered_transactions if t.type == 'OUT')
+        balance = cash_in - cash_out
+        
+        # Category breakdown
+        category_breakdown = {}
+        for t in filtered_transactions:
+            key = f"{t.category}|{t.type}|{t.bank_cash}"
+            if key not in category_breakdown:
+                category_breakdown[key] = {
+                    'category': t.category,
+                    'type': t.type,
+                    'bank_cash': t.bank_cash,
+                    'amount': 0
+                }
+            category_breakdown[key]['amount'] += t.amount
+        
+        # Bank breakdown
+        bank_breakdown = {}
+        for t in filtered_transactions:
+            if t.bank_cash not in bank_breakdown:
+                bank_breakdown[t.bank_cash] = 0
+            bank_breakdown[t.bank_cash] += t.amount
+        
+        return jsonify({
+            'summary': {
+                'cash_in': cash_in,
+                'cash_out': cash_out,
+                'balance': balance
+            },
+            'category_breakdown': list(category_breakdown.values()),
+            'bank_breakdown': [{'bank_cash': k, 'amount': v} for k, v in bank_breakdown.items()]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/banks')
+@jwt_required()
+def get_banks():
+    try:
+        current_user = get_jwt_identity()
+        user_transactions = [t for t in transactions_db if t.user_id == current_user]
+        
+        # Get unique banks/cash methods
+        banks = list(set(t.bank_cash for t in user_transactions))
+        return jsonify(banks), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/categories')
+@jwt_required()
+def get_categories():
+    try:
+        current_user = get_jwt_identity()
+        user_transactions = [t for t in transactions_db if t.user_id == current_user]
+        
+        # Get unique categories
+        categories = list(set(t.category for t in user_transactions))
+        return jsonify(categories), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
