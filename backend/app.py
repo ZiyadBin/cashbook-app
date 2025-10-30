@@ -56,11 +56,15 @@ def add_transaction():
         current_user = get_jwt_identity()
         data = request.get_json()
         
-        # Parse date or use current India time
+        # Parse date or use current time
         if data.get('date'):
-            transaction_date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+            try:
+                # Handle datetime-local format (YYYY-MM-DDTHH:MM)
+                transaction_date = datetime.fromisoformat(data['date'])
+            except ValueError:
+                # Fallback to current time if parsing fails
+                transaction_date = datetime.utcnow()
         else:
-            # Current India time (IST = UTC+5:30)
             transaction_date = datetime.utcnow()
         
         transaction = Transaction(
@@ -91,7 +95,11 @@ def update_transaction(transaction_id):
             if transaction.transaction_id == transaction_id and transaction.user_id == current_user:
                 # Parse date or keep existing
                 if data.get('date'):
-                    transaction.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+                    try:
+                        transaction.date = datetime.fromisoformat(data['date'])
+                    except ValueError:
+                        # Keep existing date if parsing fails
+                        pass
                 
                 transaction.type = data['type']
                 transaction.amount = float(data['amount'])
