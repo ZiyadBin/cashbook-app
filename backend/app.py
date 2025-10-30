@@ -56,18 +56,52 @@ def add_transaction():
         current_user = get_jwt_identity()
         data = request.get_json()
         
+        # Parse date or use current India time
+        if data.get('date'):
+            transaction_date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+        else:
+            # Current India time (IST = UTC+5:30)
+            transaction_date = datetime.utcnow()
+        
         transaction = Transaction(
             transaction_id=str(uuid.uuid4()),
             user_id=current_user,
             type=data['type'],
             amount=float(data['amount']),
             category=data['category'],
-            remark=data['remark'],
-            bank_cash=data['bank_cash']
+            remark=data.get('remark', ''),
+            bank_cash=data['bank_cash'],
+            date=transaction_date
         )
         
         transactions_db.append(transaction)
         return jsonify({'message': 'Transaction added successfully', 'transaction': transaction.to_dict()}), 201
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/transactions/<transaction_id>', methods=['PUT'])
+@jwt_required()
+def update_transaction(transaction_id):
+    try:
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        
+        for transaction in transactions_db:
+            if transaction.transaction_id == transaction_id and transaction.user_id == current_user:
+                # Parse date or keep existing
+                if data.get('date'):
+                    transaction.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+                
+                transaction.type = data['type']
+                transaction.amount = float(data['amount'])
+                transaction.category = data['category']
+                transaction.remark = data.get('remark', '')
+                transaction.bank_cash = data['bank_cash']
+                
+                return jsonify({'message': 'Transaction updated successfully', 'transaction': transaction.to_dict()}), 200
+        
+        return jsonify({'error': 'Transaction not found'}), 404
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
