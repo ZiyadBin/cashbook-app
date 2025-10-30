@@ -1,4 +1,3 @@
-// For development - will update to your Heroku URL after deployment
 const API_BASE = '/api';
 
 let token = localStorage.getItem('token');
@@ -15,12 +14,23 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = 'login.html';
         } else {
             document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
+            
+            // Set default date to current India time
+            const now = new Date();
+            const timezoneOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds
+            const indiaTime = new Date(now.getTime() + timezoneOffset);
+            const localDateTime = indiaTime.toISOString().slice(0, 16);
+            
+            if (document.getElementById('date')) {
+                document.getElementById('date').value = localDateTime;
+            }
+            
             loadTransactions();
             loadSummary();
-            // Load dropdowns for auto-suggest
             if (document.getElementById('categoryList')) {
                 loadDropdowns();
             }
+            setupModal();
         }
     }
 });
@@ -57,12 +67,12 @@ if (document.getElementById('loginForm')) {
     });
 }
 
-// Step 4: Navigation to dashboard
+// Navigation to dashboard
 function goToDashboard() {
     window.location.href = 'dashboard.html';
 }
 
-// Step 5: Load categories and banks for dropdowns
+// Load categories and banks for dropdowns
 async function loadDropdowns() {
     try {
         // Load categories
@@ -115,10 +125,11 @@ if (document.getElementById('transactionForm')) {
         e.preventDefault();
         
         const transaction = {
+            date: document.getElementById('date').value,
             type: document.getElementById('type').value,
             amount: parseFloat(document.getElementById('amount').value),
             category: document.getElementById('category').value,
-            remark: document.getElementById('remark').value || '', // Step 5: Made optional
+            remark: document.getElementById('remark').value || '',
             bank_cash: document.getElementById('bankCash').value
         };
         
@@ -134,9 +145,17 @@ if (document.getElementById('transactionForm')) {
             
             if (response.ok) {
                 document.getElementById('transactionForm').reset();
+                
+                // Reset date to current India time
+                const now = new Date();
+                const timezoneOffset = 5.5 * 60 * 60 * 1000;
+                const indiaTime = new Date(now.getTime() + timezoneOffset);
+                const localDateTime = indiaTime.toISOString().slice(0, 16);
+                document.getElementById('date').value = localDateTime;
+                
                 loadTransactions();
                 loadSummary();
-                loadDropdowns(); // Reload dropdowns to include new entries
+                loadDropdowns();
                 showMessage('Transaction added successfully!', 'success');
             } else {
                 const data = await response.json();
@@ -175,16 +194,103 @@ function displayTransactions(transactions) {
     
     transactions.forEach(transaction => {
         const row = document.createElement('tr');
+        const transactionDate = new Date(transaction.date);
+        const formattedDate = transactionDate.toLocaleString('en-IN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
         row.innerHTML = `
-            <td>${new Date(transaction.date).toLocaleDateString()}</td>
+            <td>${formattedDate}</td>
             <td><span class="type-${transaction.type.toLowerCase()}">${transaction.type}</span></td>
-            <td>$${parseFloat(transaction.amount).toFixed(2)}</td>
+            <td>₹${parseFloat(transaction.amount).toFixed(2)}</td>
             <td>${transaction.category}</td>
             <td>${transaction.remark}</td>
             <td>${transaction.bank_cash}</td>
-            <td><button onclick="deleteTransaction('${transaction.transaction_id}')" class="btn-danger">Delete</button></td>
+            <td>
+                <button onclick="editTransaction('${transaction.transaction_id}')" class="btn-secondary" style="margin-right: 5px;">Edit</button>
+                <button onclick="deleteTransaction('${transaction.transaction_id}')" class="btn-danger">Delete</button>
+            </td>
         `;
         tbody.appendChild(row);
+    });
+}
+
+// Edit transaction
+async function editTransaction(transactionId) {
+    try {
+        const response = await fetch(`${API_BASE}/transactions`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const transaction = data.transactions.find(t => t.transaction_id === transactionId);
+            
+            if (transaction) {
+                // Convert date to local datetime format
+                const transactionDate = new Date(transaction.date);
+                const localDateTime = transactionDate.toISOString().slice(0, 16);
+                
+                document.getElementById('editTransactionId').value = transaction.transaction_id;
+                document.getElementById('editDate').value = localDateTime;
+                document.getElementById('editType').value = transaction.type;
+                document.getElementById('editAmount').value = transaction.amount;
+                document.getElementById('editCategory').value = transaction.category;
+                document.getElementById('editBankCash').value = transaction.bank_cash;
+                document.getElementById('editRemark').value = transaction.remark;
+                
+                openModal();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load transaction for editing:', error);
+    }
+}
+
+// Update transaction
+if (document.getElementById('editTransactionForm')) {
+    document.getElementById('editTransactionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const transactionId = document.getElementById('editTransactionId').value;
+        const transaction = {
+            date: document.getElementById('editDate').value,
+            type: document.getElementById('editType').value,
+            amount: parseFloat(document.getElementById('editAmount').value),
+            category: document.getElementById('editCategory').value,
+            remark: document.getElementById('editRemark').value || '',
+            bank_cash: document.getElementById('editBankCash').value
+        };
+        
+        try {
+            const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(transaction)
+            });
+            
+            if (response.ok) {
+                closeModal();
+                loadTransactions();
+                loadSummary();
+                loadDropdowns();
+                showMessage('Transaction updated successfully!', 'success');
+            } else {
+                const data = await response.json();
+                showMessage(data.error, 'error');
+            }
+        } catch (error) {
+            showMessage('Failed to update transaction: ' + error.message, 'error');
+        }
     });
 }
 
@@ -200,13 +306,13 @@ async function loadSummary() {
         if (response.ok) {
             const data = await response.json();
             if (document.getElementById('cashIn')) {
-                document.getElementById('cashIn').textContent = `$${data.cash_in.toFixed(2)}`;
+                document.getElementById('cashIn').textContent = `₹${data.cash_in.toFixed(2)}`;
             }
             if (document.getElementById('cashOut')) {
-                document.getElementById('cashOut').textContent = `$${data.cash_out.toFixed(2)}`;
+                document.getElementById('cashOut').textContent = `₹${data.cash_out.toFixed(2)}`;
             }
             if (document.getElementById('balance')) {
-                document.getElementById('balance').textContent = `$${data.balance.toFixed(2)}`;
+                document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
             }
         }
     } catch (error) {
@@ -231,7 +337,7 @@ async function deleteTransaction(transactionId) {
         if (response.ok) {
             loadTransactions();
             loadSummary();
-            loadDropdowns(); // Reload dropdowns in case we deleted the last of a category/bank
+            loadDropdowns();
             showMessage('Transaction deleted successfully!', 'success');
         } else {
             const data = await response.json();
@@ -239,6 +345,40 @@ async function deleteTransaction(transactionId) {
         }
     } catch (error) {
         showMessage('Failed to delete transaction: ' + error.message, 'error');
+    }
+}
+
+// Modal functions
+function setupModal() {
+    const modal = document.getElementById('editModal');
+    const span = document.getElementsByClassName('close')[0];
+    
+    if (span) {
+        span.onclick = function() {
+            closeModal();
+        }
+    }
+    
+    if (modal) {
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    }
+}
+
+function openModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 
