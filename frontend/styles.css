@@ -236,3 +236,105 @@ tr:hover {
         gap: 0;
     }
 }
+
+/* ===== NEW DASHBOARD STYLES ===== */
+.filter-controls {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.chart-section h2 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.chart-section canvas {
+    max-height: 300px;
+    margin: 0 auto;
+}
+
+.category-breakdown {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.category-breakdown h2 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+/* Make remark label smaller */
+small {
+    color: #666;
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+/* Additional responsive styles for dashboard */
+@media (max-width: 768px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-section {
+        padding: 1rem;
+    }
+    
+    .chart-section canvas {
+        max-height: 250px;
+    }
+}
+
+/* Card hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+}
+
+/* Filter section styles */
+.filter-controls .form-row {
+    align-items: end;
+}
+
+/* Table improvements */
+#categoryTable {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+#categoryTable th {
+    background: #667eea;
+    color: white;
+}
+
+#categoryTable tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
