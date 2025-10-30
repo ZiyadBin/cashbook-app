@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
             loadTransactions();
             loadSummary();
+            // Load dropdowns for auto-suggest
+            if (document.getElementById('categoryList')) {
+                loadDropdowns();
+            }
         }
     }
 });
@@ -53,6 +57,58 @@ if (document.getElementById('loginForm')) {
     });
 }
 
+// Step 4: Navigation to dashboard
+function goToDashboard() {
+    window.location.href = 'dashboard.html';
+}
+
+// Step 5: Load categories and banks for dropdowns
+async function loadDropdowns() {
+    try {
+        // Load categories
+        const catResponse = await fetch(`${API_BASE}/categories`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (catResponse.ok) {
+            const categories = await catResponse.json();
+            const categoryList = document.getElementById('categoryList');
+            if (categoryList) {
+                categoryList.innerHTML = '';
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    categoryList.appendChild(option);
+                });
+            }
+        }
+        
+        // Load banks
+        const bankResponse = await fetch(`${API_BASE}/banks`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (bankResponse.ok) {
+            const banks = await bankResponse.json();
+            const bankList = document.getElementById('bankList');
+            if (bankList) {
+                bankList.innerHTML = '';
+                banks.forEach(bank => {
+                    const option = document.createElement('option');
+                    option.value = bank;
+                    bankList.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load dropdowns:', error);
+    }
+}
+
 // Transaction functionality
 if (document.getElementById('transactionForm')) {
     document.getElementById('transactionForm').addEventListener('submit', async function(e) {
@@ -62,7 +118,7 @@ if (document.getElementById('transactionForm')) {
             type: document.getElementById('type').value,
             amount: parseFloat(document.getElementById('amount').value),
             category: document.getElementById('category').value,
-            remark: document.getElementById('remark').value,
+            remark: document.getElementById('remark').value || '', // Step 5: Made optional
             bank_cash: document.getElementById('bankCash').value
         };
         
@@ -80,6 +136,7 @@ if (document.getElementById('transactionForm')) {
                 document.getElementById('transactionForm').reset();
                 loadTransactions();
                 loadSummary();
+                loadDropdowns(); // Reload dropdowns to include new entries
                 showMessage('Transaction added successfully!', 'success');
             } else {
                 const data = await response.json();
@@ -112,6 +169,8 @@ async function loadTransactions() {
 // Display transactions in table
 function displayTransactions(transactions) {
     const tbody = document.getElementById('transactionsBody');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
     
     transactions.forEach(transaction => {
@@ -140,9 +199,15 @@ async function loadSummary() {
         
         if (response.ok) {
             const data = await response.json();
-            document.getElementById('cashIn').textContent = `$${data.cash_in.toFixed(2)}`;
-            document.getElementById('cashOut').textContent = `$${data.cash_out.toFixed(2)}`;
-            document.getElementById('balance').textContent = `$${data.balance.toFixed(2)}`;
+            if (document.getElementById('cashIn')) {
+                document.getElementById('cashIn').textContent = `$${data.cash_in.toFixed(2)}`;
+            }
+            if (document.getElementById('cashOut')) {
+                document.getElementById('cashOut').textContent = `$${data.cash_out.toFixed(2)}`;
+            }
+            if (document.getElementById('balance')) {
+                document.getElementById('balance').textContent = `$${data.balance.toFixed(2)}`;
+            }
         }
     } catch (error) {
         console.error('Failed to load summary:', error);
@@ -166,6 +231,7 @@ async function deleteTransaction(transactionId) {
         if (response.ok) {
             loadTransactions();
             loadSummary();
+            loadDropdowns(); // Reload dropdowns in case we deleted the last of a category/bank
             showMessage('Transaction deleted successfully!', 'success');
         } else {
             const data = await response.json();
