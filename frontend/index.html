@@ -1,38 +1,149 @@
-<div class="transaction-list">
-    <h2>Transaction History</h2>
-    
-    <!-- Export Section -->
-    <div class="export-section">
-        <h3 style="margin-bottom: 0.5rem; color: #555;">Export Data</h3>
-        <div class="export-buttons">
-            <button onclick="exportToExcel()" class="btn-export excel">
-                📊 Excel
-            </button>
-            <button onclick="exportToCSV()" class="btn-export csv">
-                📄 CSV
-            </button>
-            <button onclick="printTable()" class="btn-export print">
-                🖨️ Print
-            </button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Book</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cash Book</h1>
+            <div class="user-info">
+                <span id="usernameDisplay">Welcome</span>
+                <button onclick="goToDashboard()" class="btn-secondary">View Analytics</button>
+                <button onclick="logout()" class="btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <div class="summary-cards">
+            <div class="card">
+                <h3>Cash IN</h3>
+                <p id="cashIn">₹0.00</p>
+            </div>
+            <div class="card">
+                <h3>Cash OUT</h3>
+                <p id="cashOut">₹0.00</p>
+            </div>
+            <div class="card">
+                <h3>Balance</h3>
+                <p id="balance">₹0.00</p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="transaction-form">
+                <h2>Add Transaction</h2>
+                <form id="transactionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date:</label>
+                            <input type="datetime-local" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Type:</label>
+                            <select id="type" required>
+                                <option value="IN">Cash IN</option>
+                                <option value="OUT">Cash OUT</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Amount (₹):</label>
+                            <input type="number" id="amount" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category:</label>
+                            <input type="text" id="category" list="categoryList" required>
+                            <datalist id="categoryList"></datalist>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Bank/Cash:</label>
+                            <input type="text" id="bankCash" list="bankList" required>
+                            <datalist id="bankList"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>Remark: <small>(optional)</small></label>
+                            <input type="text" id="remark">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Add Transaction</button>
+                </form>
+            </div>
+
+            <div class="transaction-list">
+                <h2>Transaction History</h2>
+                <div id="message" class="message"></div>
+                <div id="transactionsTable">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Remark</th>
+                                <th>Bank/Cash</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="message" class="message"></div>
-    <div id="transactionsTable">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Category</th>
-                    <th>Remark</th>
-                    <th>Bank/Cash</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="transactionsBody">
-            </tbody>
-        </table>
+    <!-- Edit Transaction Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Transaction</h2>
+            <form id="editTransactionForm">
+                <input type="hidden" id="editTransactionId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date:</label>
+                        <input type="datetime-local" id="editDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select id="editType" required>
+                            <option value="IN">Cash IN</option>
+                            <option value="OUT">Cash OUT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount (₹):</label>
+                        <input type="number" id="editAmount" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category:</label>
+                        <input type="text" id="editCategory" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bank/Cash:</label>
+                        <input type="text" id="editBankCash" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Remark: <small>(optional)</small></label>
+                        <input type="text" id="editRemark">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Update Transaction</button>
+            </form>
+        </div>
     </div>
-</div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
