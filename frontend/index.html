@@ -12,6 +12,8 @@
             <h1>Cash Book</h1>
             <div class="user-info">
                 <span id="usernameDisplay">Welcome</span>
+                <!-- Step 4: Added Dashboard Button -->
+                <button onclick="goToDashboard()" class="btn-secondary">View Analytics</button>
                 <button onclick="logout()" class="btn-secondary">Logout</button>
             </div>
         </header>
@@ -51,16 +53,25 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Category:</label>
-                            <input type="text" id="category" required>
+                            <!-- Step 5: Added datalist for auto-suggest -->
+                            <input type="text" id="category" list="categoryList" required>
+                            <datalist id="categoryList">
+                                <!-- Categories will be populated automatically -->
+                            </datalist>
                         </div>
                         <div class="form-group">
                             <label>Bank/Cash:</label>
-                            <input type="text" id="bankCash" required>
+                            <!-- Step 5: Added datalist for auto-suggest -->
+                            <input type="text" id="bankCash" list="bankList" required>
+                            <datalist id="bankList">
+                                <!-- Banks will be populated automatically -->
+                            </datalist>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Remark:</label>
-                        <input type="text" id="remark" required>
+                        <!-- Step 5: Made remark optional -->
+                        <label>Remark: <small>(optional)</small></label>
+                        <input type="text" id="remark">
                     </div>
                     <button type="submit" class="btn-primary">Add Transaction</button>
                 </form>
