@@ -13,27 +13,27 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!token || !currentUser) {
             window.location.href = 'login.html';
         } else {
-            document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
-            
-            // Set default date to current India time
-            const now = new Date();
-            const timezoneOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds
-            const indiaTime = new Date(now.getTime() + timezoneOffset);
-            const localDateTime = indiaTime.toISOString().slice(0, 16);
-            
-            if (document.getElementById('date')) {
-                document.getElementById('date').value = localDateTime;
-            }
-            
-            loadTransactions();
-            loadSummary();
-            if (document.getElementById('categoryList')) {
-                loadDropdowns();
-            }
-            setupModal();
+            initializeApp();
         }
     }
 });
+
+function initializeApp() {
+    document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
+    
+    // Set default date to current local time
+    const now = new Date();
+    const localDateTime = now.toISOString().slice(0, 16);
+    
+    if (document.getElementById('date')) {
+        document.getElementById('date').value = localDateTime;
+    }
+    
+    loadTransactions();
+    loadSummary();
+    loadDropdowns();
+    setupModal();
+}
 
 // Login functionality
 if (document.getElementById('loginForm')) {
@@ -146,11 +146,9 @@ if (document.getElementById('transactionForm')) {
             if (response.ok) {
                 document.getElementById('transactionForm').reset();
                 
-                // Reset date to current India time
+                // Reset date to current time
                 const now = new Date();
-                const timezoneOffset = 5.5 * 60 * 60 * 1000;
-                const indiaTime = new Date(now.getTime() + timezoneOffset);
-                const localDateTime = indiaTime.toISOString().slice(0, 16);
+                const localDateTime = now.toISOString().slice(0, 16);
                 document.getElementById('date').value = localDateTime;
                 
                 loadTransactions();
@@ -200,7 +198,8 @@ function displayTransactions(transactions) {
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            hour12: false
         });
         
         row.innerHTML = `
@@ -250,6 +249,7 @@ async function editTransaction(transactionId) {
         }
     } catch (error) {
         console.error('Failed to load transaction for editing:', error);
+        showMessage('Failed to load transaction for editing', 'error');
     }
 }
 
