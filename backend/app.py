@@ -9,7 +9,7 @@ from config import Config
 from models import users_db, transactions_db, Transaction
 from auth import authenticate_user
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend', static_url_path='')
 app.config.from_object(Config)
 CORS(app)
 jwt = JWTManager(app)
@@ -246,13 +246,13 @@ def get_categories():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Serve frontend static files
+# Serve frontend static files - FIXED VERSION
 @app.route('/')
-def serve_frontend():
+def serve_index():
     return send_from_directory('frontend', 'index.html')
 
 @app.route('/<path:path>')
-def serve_static_files(path):
+def serve_static(path):
     return send_from_directory('frontend', path)
 
 @app.route('/login')
@@ -262,6 +262,19 @@ def serve_login():
 @app.route('/dashboard')
 def serve_dashboard():
     return send_from_directory('frontend', 'dashboard.html')
+
+# Explicit CSS and JS routes to ensure they load
+@app.route('/styles.css')
+def serve_css():
+    return send_from_directory('frontend', 'styles.css')
+
+@app.route('/script.js')
+def serve_script():
+    return send_from_directory('frontend', 'script.js')
+
+@app.route('/dashboard.js')
+def serve_dashboard_js():
+    return send_from_directory('frontend', 'dashboard.js')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
