@@ -38,3 +38,16 @@
     text-decoration: none;
     cursor: pointer;
 }
+
+/* Fix for datetime-local input */
+input[type="datetime-local"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Button spacing in table */
+table .btn-secondary,
+table .btn-danger {
+    margin: 2px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+}
