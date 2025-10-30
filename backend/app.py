@@ -119,19 +119,7 @@ def get_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Serve frontend static files
-@app.route('/')
-def serve_frontend():
-    return send_from_directory('frontend', 'index.html')
-
-@app.route('/<path:path>')
-def serve_static_files(path):
-    return send_from_directory('frontend', path)
-
-@app.route('/login')
-def serve_login():
-    return send_from_directory('frontend', 'login.html')
-
+# Dashboard analytics routes
 @app.route('/api/dashboard')
 @jwt_required()
 def get_dashboard():
@@ -215,6 +203,23 @@ def get_categories():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Serve frontend static files
+@app.route('/')
+def serve_frontend():
+    return send_from_directory('frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return send_from_directory('frontend', path)
+
+@app.route('/login')
+def serve_login():
+    return send_from_directory('frontend', 'login.html')
+
+@app.route('/dashboard')
+def serve_dashboard():
+    return send_from_directory('frontend', 'dashboard.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
