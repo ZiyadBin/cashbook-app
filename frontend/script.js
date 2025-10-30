@@ -403,3 +403,194 @@ function showMessage(message, type) {
         alert(message);
     }
 }
+// Export to Excel function
+async function exportToExcel() {
+    try {
+        const response = await fetch(`${API_BASE}/transactions`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const transactions = data.transactions;
+            
+            // Create CSV content (Excel can open CSV)
+            let csvContent = "Date,Type,Amount (₹),Category,Remark,Bank/Cash\n";
+            
+            transactions.forEach(transaction => {
+                const date = new Date(transaction.date).toLocaleString('en-IN');
+                const type = transaction.type;
+                const amount = transaction.amount;
+                const category = `"${transaction.category}"`;
+                const remark = `"${transaction.remark || ''}"`;
+                const bankCash = `"${transaction.bank_cash}"`;
+                
+                csvContent += `${date},${type},${amount},${category},${remark},${bankCash}\n`;
+            });
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const currentDate = new Date().toISOString().split('T')[0];
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `cashbook_${currentUser}_${currentDate}.xlsx`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showMessage('Excel file downloaded successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        showMessage('Export failed: ' + error.message, 'error');
+    }
+}
+
+// Export to CSV function
+async function exportToCSV() {
+    try {
+        const response = await fetch(`${API_BASE}/transactions`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const transactions = data.transactions;
+            
+            // Create CSV content
+            let csvContent = "Date,Type,Amount (₹),Category,Remark,Bank/Cash\n";
+            
+            transactions.forEach(transaction => {
+                const date = new Date(transaction.date).toLocaleString('en-IN');
+                const type = transaction.type;
+                const amount = transaction.amount;
+                const category = `"${transaction.category}"`;
+                const remark = `"${transaction.remark || ''}"`;
+                const bankCash = `"${transaction.bank_cash}"`;
+                
+                csvContent += `${date},${type},${amount},${category},${remark},${bankCash}\n`;
+            });
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const currentDate = new Date().toISOString().split('T')[0];
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `cashbook_${currentUser}_${currentDate}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showMessage('CSV file downloaded successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        showMessage('Export failed: ' + error.message, 'error');
+    }
+}
+
+// Print table function
+function printTable() {
+    const printWindow = window.open('', '_blank');
+    const table = document.getElementById('transactionsTable').cloneNode(true);
+    
+    // Remove action buttons from print
+    const actionCells = table.querySelectorAll('td:last-child, th:last-child');
+    actionCells.forEach(cell => cell.remove());
+    
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Cash Book - ${currentUser}</title>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        margin: 20px; 
+                        color: #333;
+                    }
+                    h1 { 
+                        color: #333; 
+                        margin-bottom: 10px;
+                    }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 15px;
+                    }
+                    th, td { 
+                        border: 1px solid #ddd; 
+                        padding: 8px; 
+                        text-align: left;
+                        font-size: 12px;
+                    }
+                    th { 
+                        background-color: #f2f2f2; 
+                        font-weight: bold;
+                    }
+                    .type-in { color: #28a745; font-weight: bold; }
+                    .type-out { color: #dc3545; font-weight: bold; }
+                    @media print {
+                        body { margin: 0; }
+                        button { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Cash Book Transactions - ${currentUser}</h1>
+                <p><strong>Generated on:</strong> ${new Date().toLocaleString('en-IN')}</p>
+                ${table.outerHTML}
+            </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+// Update displayTransactions function to use compact layout
+function displayTransactions(transactions) {
+    const tbody = document.getElementById('transactionsBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    transactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        const transactionDate = new Date(transaction.date);
+        const formattedDate = transactionDate.toLocaleString('en-IN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        
+        row.innerHTML = `
+            <td class="compact-date">${formattedDate}</td>
+            <td><span class="type-${transaction.type.toLowerCase()}">${transaction.type}</span></td>
+            <td>₹${parseFloat(transaction.amount).toFixed(2)}</td>
+            <td>${transaction.category}</td>
+            <td>${transaction.remark}</td>
+            <td>${transaction.bank_cash}</td>
+            <td>
+                <button onclick="editTransaction('${transaction.transaction_id}')" class="btn-secondary">Edit</button>
+                <button onclick="deleteTransaction('${transaction.transaction_id}')" class="btn-danger">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
