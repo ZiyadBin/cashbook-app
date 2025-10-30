@@ -24,9 +24,9 @@ async function loadDashboard() {
 // Update dashboard with data
 function updateDashboard(data) {
     // Update summary cards
-    document.getElementById('totalBalance').textContent = `$${data.summary.balance.toFixed(2)}`;
-    document.getElementById('totalIncome').textContent = `$${data.summary.cash_in.toFixed(2)}`;
-    document.getElementById('totalExpenses').textContent = `$${data.summary.cash_out.toFixed(2)}`;
+    document.getElementById('totalBalance').textContent = `₹${data.summary.balance.toFixed(2)}`;
+    document.getElementById('totalIncome').textContent = `₹${data.summary.cash_in.toFixed(2)}`;
+    document.getElementById('totalExpenses').textContent = `₹${data.summary.cash_out.toFixed(2)}`;
     
     // Update charts
     updateCategoryChart(data.category_breakdown);
@@ -82,7 +82,7 @@ function updateIncomeExpenseChart(summary) {
         data: {
             labels: ['Income', 'Expenses'],
             datasets: [{
-                label: 'Amount ($)',
+                label: 'Amount (₹)',
                 data: [summary.cash_in, summary.cash_out],
                 backgroundColor: ['#28a745', '#dc3545']
             }]
@@ -135,7 +135,7 @@ function updateCategoryTable(categories) {
             <td>${category.category}</td>
             <td><span class="type-${category.type.toLowerCase()}">${category.type}</span></td>
             <td>${category.bank_cash}</td>
-            <td>$${category.amount.toFixed(2)}</td>
+            <td>₹${category.amount.toFixed(2)}</td>
             <td>${percentage}%</td>
         `;
         tbody.appendChild(row);
@@ -167,19 +167,47 @@ async function loadBankFilters() {
     }
 }
 
+// Load category filter options
+async function loadCategoryFilters() {
+    try {
+        const response = await fetch(`${API_BASE}/categories`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const categories = await response.json();
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter) {
+                categoryFilter.innerHTML = '<option value="ALL">All Categories</option>';
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    categoryFilter.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+    }
+}
+
 // Navigation
 function goToMain() {
-    window.location.href = 'index.html';
+    window.location.href = '/';
 }
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     if (!token || !currentUser) {
-        window.location.href = 'login.html';
+        window.location.href = '/login';
         return;
     }
     
     document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
     loadBankFilters();
+    loadCategoryFilters();
     loadDashboard();
 });
