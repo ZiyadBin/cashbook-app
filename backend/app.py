@@ -272,19 +272,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
-# Explicit CSS and JS routes to ensure they load
-@app.route('/styles.css')
-def serve_css():
-    return send_from_directory('frontend', 'styles.css')
 
-@app.route('/script.js')
-def serve_script():
-    return send_from_directory('frontend', 'script.js')
-
-@app.route('/dashboard.js')
-def serve_dashboard_js():
-    return send_from_directory('frontend', 'dashboard.js')
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
