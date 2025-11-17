@@ -69,7 +69,7 @@ if (document.getElementById('loginForm')) {
 
 // Navigation to dashboard
 function goToDashboard() {
-    window.location.href = 'dashboard.html';
+    window.location.href = '/dashboard';
 }
 
 // Load categories and banks for dropdowns
