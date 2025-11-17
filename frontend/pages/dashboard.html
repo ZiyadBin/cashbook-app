@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Book - Analytics</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cash Book - Analytics</h1>
+            <div class="user-info">
+                <span id="usernameDisplay">Welcome</span>
+                <button onclick="goToMain()" class="btn-secondary">Back to Transactions</button>
+                <button onclick="logout()" class="btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <div class="filter-controls">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Filter by Type:</label>
+                    <select id="typeFilter">
+                        <option value="ALL">All Transactions</option>
+                        <option value="IN">Cash IN Only</option>
+                        <option value="OUT">Cash OUT Only</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter by Bank/Cash:</label>
+                    <select id="bankFilter">
+                        <option value="ALL">All</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button onclick="loadDashboard()" class="btn-primary">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-cards">
+            <div class="card">
+                <h3>Total Balance</h3>
+                <p id="totalBalance">₹0.00</p>
+            </div>
+            <div class="card">
+                <h3>Total Income</h3>
+                <p id="totalIncome">₹0.00</p>
+            </div>
+            <div class="card">
+                <h3>Total Expenses</h3>
+                <p id="totalExpenses">₹0.00</p>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-section">
+                <h2>Expenses by Category</h2>
+                <canvas id="categoryChart"></canvas>
+            </div>
+            
+            <div class="chart-section">
+                <h2>Income vs Expenses</h2>
+                <canvas id="incomeExpenseChart"></canvas>
+            </div>
+
+            <div class="chart-section">
+                <h2>Transactions by Bank/Cash</h2>
+                <canvas id="bankChart"></canvas>
+            </div>
+        </div>
+
+        <div class="category-breakdown">
+            <h2>Detailed Category Breakdown</h2>
+            <table id="categoryTable">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Bank/Cash</th>
+                        <th>Amount</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+                <tbody id="categoryBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="/script.js"></script>
+    <script src="/dashboard.js"></script>
+</body>
+</html>
