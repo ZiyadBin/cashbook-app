@@ -9,7 +9,7 @@ from config import Config
 from models import users_db, transactions_db, Transaction
 from auth import authenticate_user
 
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app)
 jwt = JWTManager(app)
@@ -246,22 +246,31 @@ def get_categories():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Serve frontend static files - FIXED VERSION
+# === Serve Frontend (Corrected Paths) ===
+
 @app.route('/')
 def serve_index():
-    return send_from_directory('frontend', 'index.html')
-
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory('frontend', path)
+    # Go UP one directory (../) and into 'frontend'
+    return send_from_directory('../frontend', 'index.html')
 
 @app.route('/login')
 def serve_login():
-    return send_from_directory('frontend', 'login.html')
+    return send_from_directory('../frontend', 'login.html')
 
 @app.route('/dashboard')
 def serve_dashboard():
-    return send_from_directory('frontend', 'dashboard.html')
+    return send_from_directory('../frontend', 'dashboard.html')
+
+# This single route handles ALL other files (CSS, JS, images)
+# You can delete your separate /styles.css, /script.js routes
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('../frontend', path)
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 # Explicit CSS and JS routes to ensure they load
 @app.route('/styles.css')
