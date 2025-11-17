@@ -250,19 +250,21 @@ def get_categories():
 
 @app.route('/')
 def serve_index():
-    # Go UP one directory (../) and into 'frontend'
-    return send_from_directory('../frontend', 'index.html')
+    # Path is now ../frontend/pages/index.html
+    return send_from_directory('../frontend/pages', 'index.html')
 
 @app.route('/login')
 def serve_login():
-    return send_from_directory('../frontend', 'login.html')
+    # Path is now ../frontend/pages/login.html
+    return send_from_directory('../frontend/pages', 'login.html')
 
 @app.route('/dashboard')
 def serve_dashboard():
-    return send_from_directory('../frontend', 'dashboard.html')
+    # Path is now ../frontend/pages/dashboard.html
+    return send_from_directory('../frontend/pages', 'dashboard.html')
 
 # This single route handles ALL other files (CSS, JS, images)
-# You can delete your separate /styles.css, /script.js routes
+# It will now correctly find 'css/styles.css' and 'js/script.js'
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory('../frontend', path)
@@ -271,5 +273,3 @@ def serve_static(path):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-
