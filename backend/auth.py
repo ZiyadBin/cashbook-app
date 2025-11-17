@@ -1,5 +1,5 @@
 from flask_jwt_extended import create_access_token
-from backend.models import User
+from models import User
 
 def authenticate_user(username, password):
     """Authenticate user against the database and return JWT token"""
