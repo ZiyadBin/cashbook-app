@@ -5,10 +5,10 @@ from datetime import datetime
 import os
 from sqlalchemy import func, distinct
 
-from backend.config import Config
-from backend.models import db, User, Transaction # Import db and new models
-from backend.extensions import db, bcrypt # Import extensions
-from backend.auth import authenticate_user
+from config import Config
+from models import db, User, Transaction # Import db and new models
+from extensions import db, bcrypt # Import extensions
+from auth import authenticate_user
 
 # --- App Initialization ---
 
