@@ -7,11 +7,11 @@ let currentUser = localStorage.getItem('username');
 document.addEventListener('DOMContentLoaded', function() {
     if (window.location.pathname.endsWith('login.html')) {
         if (token && currentUser) {
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }
     } else {
         if (!token || !currentUser) {
-            window.location.href = 'login.html';
+            window.location.href = '/login';
         } else {
             initializeApp();
         }
@@ -57,7 +57,7 @@ if (document.getElementById('loginForm')) {
             if (response.ok) {
                 localStorage.setItem('token', data.access_token);
                 localStorage.setItem('username', data.username);
-                window.location.href = 'index.html';
+                window.location.href = '/';
             } else {
                 showMessage(data.error, 'error');
             }
@@ -386,7 +386,7 @@ function closeModal() {
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
-    window.location.href = 'login.html';
+    window.location.href = '/login';
 }
 
 // Utility functions
