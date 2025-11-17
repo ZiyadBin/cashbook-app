@@ -1,5 +1,5 @@
 from datetime import datetime
-from backend.extensions import db, bcrypt # Import from our new file
+from extensions import db, bcrypt
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
