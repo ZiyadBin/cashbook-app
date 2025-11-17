@@ -1,0 +1,532 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Login Styles */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-form h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.login-form h2 {
+    text-align: center;
+    color: #666;
+    margin-bottom: 2rem;
+    font-weight: normal;
+}
+
+/* Dashboard Styles */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #eee;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #555;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.card h3 {
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.card p {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Transaction List */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+}
+
+.transaction-form, .transaction-list {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Message Styles */
+.message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.demo-credentials {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.type-in { color: #28a745; font-weight: bold; }
+.type-out { color: #dc3545; font-weight: bold; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+/* ===== DASHBOARD STYLES ===== */
+.filter-controls {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.chart-section h2 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.chart-section canvas {
+    max-height: 300px;
+    margin: 0 auto;
+}
+
+.category-breakdown {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.category-breakdown h2 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+/* Make remark label smaller */
+small {
+    color: #666;
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+/* Additional responsive styles for dashboard */
+@media (max-width: 768px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-section {
+        padding: 1rem;
+    }
+    
+    .chart-section canvas {
+        max-height: 250px;
+    }
+}
+
+/* Card hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+}
+
+/* Filter section styles */
+.filter-controls .form-row {
+    align-items: end;
+}
+
+/* Table improvements */
+#categoryTable {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+#categoryTable th {
+    background: #667eea;
+    color: white;
+}
+
+#categoryTable tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+/* ===== MODAL STYLES ===== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Fix for datetime-local input */
+input[type="datetime-local"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Button spacing in table */
+table .btn-secondary,
+table .btn-danger {
+    margin: 2px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+}
+/* ===== COMPACT TABLE STYLES ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+}
+
+th, td {
+    padding: 0.4rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Specific column widths */
+th:nth-child(1), td:nth-child(1) { /* Date */
+    width: 140px;
+    min-width: 140px;
+    max-width: 140px;
+}
+
+th:nth-child(2), td:nth-child(2) { /* Type */
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    text-align: center;
+}
+
+th:nth-child(3), td:nth-child(3) { /* Amount */
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    text-align: right;
+}
+
+th:nth-child(4), td:nth-child(4) { /* Category */
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+}
+
+th:nth-child(5), td:nth-child(5) { /* Remark */
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+th:nth-child(6), td:nth-child(6) { /* Bank/Cash */
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+}
+
+th:nth-child(7), td:nth-child(7) { /* Actions */
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    text-align: center;
+}
+
+/* Compact date display */
+.compact-date {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* Export section styles */
+.export-section {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-export {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.2s;
+}
+
+.btn-export:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.btn-export.excel {
+    background: #217346;
+}
+
+.btn-export.csv {
+    background: #6c757d;
+}
+
+.btn-export.print {
+    background: #17a2b8;
+}
+
+/* Make table scrollable on small screens */
+.transaction-list {
+    overflow-x: auto;
+}
+
+/* Better responsive table */
+@media (max-width: 768px) {
+    table {
+        font-size: 0.8rem;
+    }
+    
+    th, td {
+        padding: 0.3rem;
+    }
+    
+    .export-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-export {
+        justify-content: center;
+    }
+}
