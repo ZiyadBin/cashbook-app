@@ -5,8 +5,8 @@ let currentUser = localStorage.getItem('username');
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.pathname.endsWith('login.html') || window.location.pathname === '/') {
-        if (token && currentUser) {
+    if (window.location.pathname.endsWith('login.html')) {
+        if (token && currentUser) {
             window.location.href = 'index.html';
         }
     } else {
