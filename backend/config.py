@@ -15,9 +15,17 @@ class Config:
         # If db_url is None OR an empty string, raise an error
         raise ValueError("FATAL ERROR: DATABASE_URL is not set in Render environment. Please add it and save changes.")
     
+    # Check if it starts with the expected string
     if db_url.startswith("postgres://"):
-        # This is the correct path, modify it for the new driver
+        print("+++ URL starts with 'postgres://'. Modifying for psycopg. +++")
         db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
-    
+    elif db_url.startswith("postgresql://"):
+        # --- NEW CATCH ---
+        # What if it already starts with 'postgresql://'?
+        print("+++ URL starts with 'postgresql://'. Modifying for psycopg. +++")
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    else:
+        print(f"!!!! WARNING: DATABASE_URL ('{db_url}') does not start with 'postgres://' or 'postgresql://'. App will likely fail. !!!!")
+
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
