@@ -10,14 +10,11 @@ class User(db.Model):
   def set_password(self, password):
       """Hashes and sets the password."""
       self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-      
   def check_password(self, password):
       """Checks a password against the hash."""
       return bcrypt.check_password_hash(self.password_hash, password)
-
   def __repr__(self):
       return f'<User {self.username}>'
-
 
 class Transaction(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -27,10 +24,9 @@ class Transaction(db.Model):
   remark = db.Column(db.String(200), nullable=True)
   bank_cash = db.Column(db.String(100), nullable=False)
   date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
+  
   # Foreign Key to link to the User table
   user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
   def to_dict(self):
       """Converts the transaction to a dictionary."""
       return {
@@ -43,6 +39,6 @@ class Transaction(db.Model):
         'bank_cash': self.bank_cash,
         'date': self.date.isoformat()
       }
-
+    
   def __repr__(self):
       return f'<Transaction {self.id} - {self.type} - {self.amount}>'
