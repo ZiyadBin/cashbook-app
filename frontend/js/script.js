@@ -2,29 +2,71 @@ const API_BASE = '/api';
 let token = localStorage.getItem('token');
 let currentUser = localStorage.getItem('username');
 
+// --- Auth Check on Page Load ---
 document.addEventListener('DOMContentLoaded', function() {
     if (window.location.pathname === '/login') {
+        // If on login page and already logged in, go to dashboard
         if (token && currentUser) { window.location.href = '/'; }
     } else {
+        // If not on login page and NOT logged in, go to login
         if (!token || !currentUser) { window.location.href = '/login'; } 
         else { initializeApp(); }
     }
 });
 
 function initializeApp() {
-    document.getElementById('usernameDisplay').textContent = `Hi, ${currentUser}`;
+    if(document.getElementById('usernameDisplay')) {
+        document.getElementById('usernameDisplay').textContent = `Hi, ${currentUser}`;
+    }
+    
+    // Set local date for input
     const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Local time correction
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
     if (document.getElementById('date')) {
         document.getElementById('date').value = now.toISOString().slice(0, 16);
     }
+    
     loadTransactions();
     loadSummary();
     loadDropdowns();
 }
 
-// --- Load & Display ---
+// ==========================================
+//  MISSING LOGIN LOGIC (ADDED BACK)
+// ==========================================
+if (document.getElementById('loginForm')) {
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // STOP PAGE RELOAD
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('username', data.username);
+                window.location.href = '/'; // Redirect to dashboard
+            } else {
+                showMessage(data.error || 'Invalid credentials', 'error');
+            }
+        } catch (error) {
+            showMessage('Login failed: ' + error.message, 'error');
+        }
+    });
+}
+
+// --- Load & Display Data ---
 async function loadSummary() {
+    if(!document.getElementById('cashIn')) return; // Skip if not on dashboard
+    
     try {
         const response = await fetch(`${API_BASE}/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
@@ -33,14 +75,18 @@ async function loadSummary() {
             document.getElementById('cashOut').textContent = `₹${data.cash_out.toFixed(2)}`;
             document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
             
-            // Update month labels
-            document.getElementById('currentMonthDisplay').textContent = data.month_name;
-            document.getElementById('currentMonthDisplay2').textContent = data.month_name;
+            // Update month labels if they exist
+            if(document.getElementById('currentMonthDisplay')) 
+                document.getElementById('currentMonthDisplay').textContent = data.month_name;
+            if(document.getElementById('currentMonthDisplay2'))
+                document.getElementById('currentMonthDisplay2').textContent = data.month_name;
         }
     } catch (error) { console.error('Summary error:', error); }
 }
 
 async function loadTransactions() {
+    if(!document.getElementById('transactionsBody')) return; // Skip if not on dashboard
+
     try {
         const response = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
@@ -53,6 +99,7 @@ async function loadTransactions() {
 
 function displayTransactions(transactions) {
     const tbody = document.getElementById('transactionsBody');
+    if(!tbody) return;
     tbody.innerHTML = '';
     
     if(transactions.length === 0) {
@@ -129,16 +176,15 @@ async function deleteTransaction(id) {
     }
 }
 
-// Fixed Edit Logic
+// Edit Logic
 async function openEditModal(id) {
     const res = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
-    const t = data.transactions.find(x => x.transaction_id == id); // Loose equality for string/int mismatch
+    const t = data.transactions.find(x => x.transaction_id == id); 
     
     if(t) {
         document.getElementById('editTransactionId').value = t.transaction_id;
         
-        // Fix Date format for input
         const dateObj = new Date(t.date);
         dateObj.setMinutes(dateObj.getMinutes() - dateObj.getTimezoneOffset());
         document.getElementById('editDate').value = dateObj.toISOString().slice(0, 16);
@@ -153,7 +199,6 @@ async function openEditModal(id) {
     }
 }
 
-// Edit Form Submit
 document.getElementById('editTransactionForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const id = document.getElementById('editTransactionId').value;
@@ -205,18 +250,14 @@ async function importData() {
             showMessage(data.message, 'success');
             loadTransactions();
             loadSummary();
-            fileInput.value = ''; // clear input
+            fileInput.value = ''; 
         } else {
             alert(data.error || 'Import failed');
         }
     } catch(e) { console.error(e); alert("Import error"); }
 }
 
-// Reuse existing export logic from previous code for exportToExcel/CSV...
-// (You can copy paste your previous exportToExcel function here if needed, 
-// but the UI now has specific buttons for them calling these names)
 async function exportToExcel() {
-    // Simple trigger to download all transactions
     try {
         const response = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
@@ -229,20 +270,25 @@ async function exportToExcel() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", "cashbook_export.csv"); // CSV opens in Excel
+            link.setAttribute("download", "cashbook_export.csv"); 
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
     } catch (e) { console.error(e); }
 }
-async function exportToCSV() { exportToExcel(); } // Reuse for now
+async function exportToCSV() { exportToExcel(); } 
+function printTable() { window.print(); }
 
 // --- Utils ---
 function showMessage(msg, type) {
     const m = document.getElementById('message');
-    m.textContent = msg;
-    m.className = `message ${type}`;
-    m.style.display = 'block';
-    setTimeout(() => m.style.display = 'none', 3000);
+    if(m) {
+        m.textContent = msg;
+        m.className = `message ${type}`;
+        m.style.display = 'block';
+        setTimeout(() => m.style.display = 'none', 3000);
+    } else {
+        alert(msg);
+    }
 }
 
 function logout() {
@@ -252,22 +298,24 @@ function logout() {
 
 function goToDashboard() { window.location.href = '/dashboard'; }
 
-// Load dropdown helpers
 async function loadDropdowns() {
     try {
         const catRes = await fetch(`${API_BASE}/categories`, { headers: { 'Authorization': `Bearer ${token}` } });
         const bankRes = await fetch(`${API_BASE}/banks`, { headers: { 'Authorization': `Bearer ${token}` } });
         if(catRes.ok) {
             const cats = await catRes.json();
-            document.getElementById('categoryList').innerHTML = cats.map(c => `<option value="${c}">`).join('');
+            if(document.getElementById('categoryList'))
+                document.getElementById('categoryList').innerHTML = cats.map(c => `<option value="${c}">`).join('');
         }
         if(bankRes.ok) {
             const banks = await bankRes.json();
-            document.getElementById('bankList').innerHTML = banks.map(b => `<option value="${b}">`).join('');
+            if(document.getElementById('bankList'))
+                document.getElementById('bankList').innerHTML = banks.map(b => `<option value="${b}">`).join('');
         }
     } catch(e) {}
 }
 
 // Close Modal Logic
-document.querySelector('.close').onclick = () => document.getElementById('editModal').style.display = 'none';
+const closeBtn = document.querySelector('.close');
+if(closeBtn) closeBtn.onclick = () => document.getElementById('editModal').style.display = 'none';
 window.onclick = (e) => { if(e.target == document.getElementById('editModal')) document.getElementById('editModal').style.display = 'none'; }
