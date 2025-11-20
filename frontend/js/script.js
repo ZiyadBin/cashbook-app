@@ -1,596 +1,273 @@
 const API_BASE = '/api';
-
 let token = localStorage.getItem('token');
 let currentUser = localStorage.getItem('username');
 
-// Check authentication on page load
 document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.pathname === '/login') {
-        if (token && currentUser) {
-            window.location.href = '/';
-        }
+    if (window.location.pathname === '/login') {
+        if (token && currentUser) { window.location.href = '/'; }
     } else {
-        if (!token || !currentUser) {
-            window.location.href = '/login';
-        } else {
-            initializeApp();
-        }
+        if (!token || !currentUser) { window.location.href = '/login'; } 
+        else { initializeApp(); }
     }
 });
 
 function initializeApp() {
-    document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
-    
-    // Set default date to current local time
+    document.getElementById('usernameDisplay').textContent = `Hi, ${currentUser}`;
     const now = new Date();
-    const localDateTime = now.toISOString().slice(0, 16);
-    
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Local time correction
     if (document.getElementById('date')) {
-        document.getElementById('date').value = localDateTime;
+        document.getElementById('date').value = now.toISOString().slice(0, 16);
     }
-    
     loadTransactions();
     loadSummary();
     loadDropdowns();
-    setupModal();
 }
 
-// Login functionality
-if (document.getElementById('loginForm')) {
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        try {
-            const response = await fetch(`${API_BASE}/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                localStorage.setItem('token', data.access_token);
-                localStorage.setItem('username', data.username);
-                window.location.href = '/';
-            } else {
-                showMessage(data.error, 'error');
-            }
-        } catch (error) {
-            showMessage('Login failed: ' + error.message, 'error');
-        }
-    });
-}
-
-// Navigation to dashboard
-function goToDashboard() {
-    window.location.href = '/dashboard';
-}
-
-// Load categories and banks for dropdowns
-async function loadDropdowns() {
+// --- Load & Display ---
+async function loadSummary() {
     try {
-        // Load categories
-        const catResponse = await fetch(`${API_BASE}/categories`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (catResponse.ok) {
-            const categories = await catResponse.json();
-            const categoryList = document.getElementById('categoryList');
-            if (categoryList) {
-                categoryList.innerHTML = '';
-                categories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat;
-                    categoryList.appendChild(option);
-                });
-            }
-        }
-        
-        // Load banks
-        const bankResponse = await fetch(`${API_BASE}/banks`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (bankResponse.ok) {
-            const banks = await bankResponse.json();
-            const bankList = document.getElementById('bankList');
-            if (bankList) {
-                bankList.innerHTML = '';
-                banks.forEach(bank => {
-                    const option = document.createElement('option');
-                    option.value = bank;
-                    bankList.appendChild(option);
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Failed to load dropdowns:', error);
-    }
-}
-
-// Transaction functionality
-if (document.getElementById('transactionForm')) {
-    document.getElementById('transactionForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const transaction = {
-            date: document.getElementById('date').value,
-            type: document.getElementById('type').value,
-            amount: parseFloat(document.getElementById('amount').value),
-            category: document.getElementById('category').value,
-            remark: document.getElementById('remark').value || '',
-            bank_cash: document.getElementById('bankCash').value
-        };
-        
-        try {
-            const response = await fetch(`${API_BASE}/transactions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(transaction)
-            });
-            
-            if (response.ok) {
-                document.getElementById('transactionForm').reset();
-                
-                // Reset date to current time
-                const now = new Date();
-                const localDateTime = now.toISOString().slice(0, 16);
-                document.getElementById('date').value = localDateTime;
-                
-                loadTransactions();
-                loadSummary();
-                loadDropdowns();
-                showMessage('Transaction added successfully!', 'success');
-            } else {
-                const data = await response.json();
-                showMessage(data.error, 'error');
-            }
-        } catch (error) {
-            showMessage('Failed to add transaction: ' + error.message, 'error');
-        }
-    });
-}
-
-// Load transactions
-async function loadTransactions() {
-    try {
-        const response = await fetch(`${API_BASE}/transactions`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
+        const response = await fetch(`${API_BASE}/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
             const data = await response.json();
-            displayTransactions(data.transactions);
+            document.getElementById('cashIn').textContent = `₹${data.cash_in.toFixed(2)}`;
+            document.getElementById('cashOut').textContent = `₹${data.cash_out.toFixed(2)}`;
+            document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
+            
+            // Update month labels
+            document.getElementById('currentMonthDisplay').textContent = data.month_name;
+            document.getElementById('currentMonthDisplay2').textContent = data.month_name;
         }
-    } catch (error) {
-        console.error('Failed to load transactions:', error);
-    }
+    } catch (error) { console.error('Summary error:', error); }
 }
 
-// Display transactions in table
+async function loadTransactions() {
+    try {
+        const response = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) {
+            const data = await response.json();
+            // SLICE to show only last 5
+            displayTransactions(data.transactions.slice(0, 5));
+        }
+    } catch (error) { console.error('Trans error:', error); }
+}
+
 function displayTransactions(transactions) {
     const tbody = document.getElementById('transactionsBody');
-    if (!tbody) return;
-    
     tbody.innerHTML = '';
     
-    transactions.forEach(transaction => {
+    if(transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #aaa;">No recent transactions</td></tr>';
+        return;
+    }
+
+    transactions.forEach(t => {
         const row = document.createElement('tr');
-        const transactionDate = new Date(transaction.date);
-        const formattedDate = transactionDate.toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
+        const dateObj = new Date(t.date);
+        const dateStr = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
         
         row.innerHTML = `
-            <td>${formattedDate}</td>
-            <td><span class="type-${transaction.type.toLowerCase()}">${transaction.type}</span></td>
-            <td>₹${parseFloat(transaction.amount).toFixed(2)}</td>
-            <td>${transaction.category}</td>
-            <td>${transaction.remark}</td>
-            <td>${transaction.bank_cash}</td>
+            <td>${dateStr} <small style="color:#999">${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small></td>
+            <td><span class="type-badge type-${t.type.toLowerCase()}">${t.type}</span></td>
+            <td style="font-weight:600">₹${t.amount.toFixed(2)}</td>
+            <td>${t.category}</td>
+            <td>${t.bank_cash}</td>
+            <td style="color: #666; font-size: 0.85rem;">${t.remark || '-'}</td>
             <td>
-                <button onclick="editTransaction('${transaction.transaction_id}')" class="btn-secondary" style="margin-right: 5px;">Edit</button>
-                <button onclick="deleteTransaction('${transaction.transaction_id}')" class="btn-danger">Delete</button>
+                <button onclick="openEditModal('${t.transaction_id}')" class="btn-secondary small-btn"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteTransaction('${t.transaction_id}')" class="btn-danger small-btn"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(row);
     });
 }
 
-// Edit transaction
-async function editTransaction(transactionId) {
-    try {
-        const response = await fetch(`${API_BASE}/transactions`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            const transaction = data.transactions.find(t => t.transaction_id === transactionId);
-            
-            if (transaction) {
-                // Convert date to local datetime format
-                const transactionDate = new Date(transaction.date);
-                const localDateTime = transactionDate.toISOString().slice(0, 16);
-                
-                document.getElementById('editTransactionId').value = transaction.transaction_id;
-                document.getElementById('editDate').value = localDateTime;
-                document.getElementById('editType').value = transaction.type;
-                document.getElementById('editAmount').value = transaction.amount;
-                document.getElementById('editCategory').value = transaction.category;
-                document.getElementById('editBankCash').value = transaction.bank_cash;
-                document.getElementById('editRemark').value = transaction.remark;
-                
-                openModal();
-            }
-        }
-    } catch (error) {
-        console.error('Failed to load transaction for editing:', error);
-        showMessage('Failed to load transaction for editing', 'error');
-    }
-}
-
-// Update transaction
-if (document.getElementById('editTransactionForm')) {
-    document.getElementById('editTransactionForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const transactionId = document.getElementById('editTransactionId').value;
-        const transaction = {
-            date: document.getElementById('editDate').value,
-            type: document.getElementById('editType').value,
-            amount: parseFloat(document.getElementById('editAmount').value),
-            category: document.getElementById('editCategory').value,
-            remark: document.getElementById('editRemark').value || '',
-            bank_cash: document.getElementById('editBankCash').value
-        };
-        
-        try {
-            const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(transaction)
-            });
-            
-            if (response.ok) {
-                closeModal();
-                loadTransactions();
-                loadSummary();
-                loadDropdowns();
-                showMessage('Transaction updated successfully!', 'success');
-            } else {
-                const data = await response.json();
-                showMessage(data.error, 'error');
-            }
-        } catch (error) {
-            showMessage('Failed to update transaction: ' + error.message, 'error');
-        }
-    });
-}
-
-// Load summary
-async function loadSummary() {
-    try {
-        const response = await fetch(`${API_BASE}/summary`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (document.getElementById('cashIn')) {
-                document.getElementById('cashIn').textContent = `₹${data.cash_in.toFixed(2)}`;
-            }
-            if (document.getElementById('cashOut')) {
-                document.getElementById('cashOut').textContent = `₹${data.cash_out.toFixed(2)}`;
-            }
-            if (document.getElementById('balance')) {
-                document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
-            }
-        }
-    } catch (error) {
-        console.error('Failed to load summary:', error);
-    }
-}
-
-// Delete transaction
-async function deleteTransaction(transactionId) {
-    if (!confirm('Are you sure you want to delete this transaction?')) {
-        return;
-    }
+// --- Add Transaction ---
+document.getElementById('transactionForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    // Get value from checked radio button
+    const type = document.querySelector('input[name="type"]:checked').value;
     
-    try {
-        const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+    const transaction = {
+        date: document.getElementById('date').value,
+        type: type,
+        amount: document.getElementById('amount').value,
+        category: document.getElementById('category').value,
+        bank_cash: document.getElementById('bankCash').value,
+        remark: document.getElementById('remark').value
+    };
+
+    const res = await fetch(`${API_BASE}/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(transaction)
+    });
+
+    if (res.ok) {
+        // Reset form but keep date current
+        this.reset();
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('date').value = now.toISOString().slice(0, 16);
+        // Reset type to IN
+        document.getElementById('typeIn').checked = true; 
         
-        if (response.ok) {
+        loadTransactions();
+        loadSummary();
+        showMessage('Added!', 'success');
+    } else {
+        showMessage('Error adding transaction', 'error');
+    }
+});
+
+// --- Edit & Delete ---
+async function deleteTransaction(id) {
+    if(confirm('Delete this transaction?')) {
+        const res = await fetch(`${API_BASE}/transactions/${id}`, {
+            method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(res.ok) { loadTransactions(); loadSummary(); showMessage('Deleted.', 'success'); }
+    }
+}
+
+// Fixed Edit Logic
+async function openEditModal(id) {
+    const res = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await res.json();
+    const t = data.transactions.find(x => x.transaction_id == id); // Loose equality for string/int mismatch
+    
+    if(t) {
+        document.getElementById('editTransactionId').value = t.transaction_id;
+        
+        // Fix Date format for input
+        const dateObj = new Date(t.date);
+        dateObj.setMinutes(dateObj.getMinutes() - dateObj.getTimezoneOffset());
+        document.getElementById('editDate').value = dateObj.toISOString().slice(0, 16);
+        
+        document.getElementById('editType').value = t.type;
+        document.getElementById('editAmount').value = t.amount;
+        document.getElementById('editCategory').value = t.category;
+        document.getElementById('editBankCash').value = t.bank_cash;
+        document.getElementById('editRemark').value = t.remark;
+        
+        document.getElementById('editModal').style.display = 'block';
+    }
+}
+
+// Edit Form Submit
+document.getElementById('editTransactionForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('editTransactionId').value;
+    const body = {
+        date: document.getElementById('editDate').value,
+        type: document.getElementById('editType').value,
+        amount: document.getElementById('editAmount').value,
+        category: document.getElementById('editCategory').value,
+        bank_cash: document.getElementById('editBankCash').value,
+        remark: document.getElementById('editRemark').value
+    };
+
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+        document.getElementById('editModal').style.display = 'none';
+        loadTransactions();
+        loadSummary();
+        showMessage('Updated!', 'success');
+    }
+});
+
+// --- Import/Export ---
+function toggleImportExport() {
+    const panel = document.getElementById('importExportPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+async function importData() {
+    const fileInput = document.getElementById('importFile');
+    const file = fileInput.files[0];
+    if(!file) { alert("Select a file first"); return; }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch(`${API_BASE}/import`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if(res.ok) {
+            showMessage(data.message, 'success');
             loadTransactions();
             loadSummary();
-            loadDropdowns();
-            showMessage('Transaction deleted successfully!', 'success');
+            fileInput.value = ''; // clear input
         } else {
+            alert(data.error || 'Import failed');
+        }
+    } catch(e) { console.error(e); alert("Import error"); }
+}
+
+// Reuse existing export logic from previous code for exportToExcel/CSV...
+// (You can copy paste your previous exportToExcel function here if needed, 
+// but the UI now has specific buttons for them calling these names)
+async function exportToExcel() {
+    // Simple trigger to download all transactions
+    try {
+        const response = await fetch(`${API_BASE}/transactions`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) {
             const data = await response.json();
-            showMessage(data.error, 'error');
+            let csvContent = "Date,Type,Amount,Category,Remark,Bank/Cash\n";
+            data.transactions.forEach(t => {
+                 csvContent += `${t.date},${t.type},${t.amount},${t.category},${t.remark},${t.bank_cash}\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "cashbook_export.csv"); // CSV opens in Excel
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
-    } catch (error) {
-        showMessage('Failed to delete transaction: ' + error.message, 'error');
-    }
+    } catch (e) { console.error(e); }
+}
+async function exportToCSV() { exportToExcel(); } // Reuse for now
+
+// --- Utils ---
+function showMessage(msg, type) {
+    const m = document.getElementById('message');
+    m.textContent = msg;
+    m.className = `message ${type}`;
+    m.style.display = 'block';
+    setTimeout(() => m.style.display = 'none', 3000);
 }
 
-// Modal functions
-function setupModal() {
-    const modal = document.getElementById('editModal');
-    const span = document.getElementsByClassName('close')[0];
-    
-    if (span) {
-        span.onclick = function() {
-            closeModal();
-        }
-    }
-    
-    if (modal) {
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
-    }
-}
-
-function openModal() {
-    const modal = document.getElementById('editModal');
-    if (modal) {
-        modal.style.display = 'block';
-    }
-}
-
-function closeModal() {
-    const modal = document.getElementById('editModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-// Logout
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
+    localStorage.clear();
     window.location.href = '/login';
 }
 
-// Utility functions
-function showMessage(message, type) {
-    const messageDiv = document.getElementById('message');
-    if (messageDiv) {
-        messageDiv.textContent = message;
-        messageDiv.className = `message ${type}`;
-        setTimeout(() => {
-            messageDiv.textContent = '';
-            messageDiv.className = 'message';
-        }, 5000);
-    } else {
-        alert(message);
-    }
-}
-// Export to Excel function
-async function exportToExcel() {
+function goToDashboard() { window.location.href = '/dashboard'; }
+
+// Load dropdown helpers
+async function loadDropdowns() {
     try {
-        const response = await fetch(`${API_BASE}/transactions`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            const transactions = data.transactions;
-            
-            // Create CSV content (Excel can open CSV)
-            let csvContent = "Date,Type,Amount (₹),Category,Remark,Bank/Cash\n";
-            
-            transactions.forEach(transaction => {
-                const date = new Date(transaction.date).toLocaleString('en-IN');
-                const type = transaction.type;
-                const amount = transaction.amount;
-                const category = `"${transaction.category}"`;
-                const remark = `"${transaction.remark || ''}"`;
-                const bankCash = `"${transaction.bank_cash}"`;
-                
-                csvContent += `${date},${type},${amount},${category},${remark},${bankCash}\n`;
-            });
-            
-            // Create and download file
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            const currentDate = new Date().toISOString().split('T')[0];
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `cashbook_${currentUser}_${currentDate}.xlsx`);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showMessage('Excel file downloaded successfully!', 'success');
+        const catRes = await fetch(`${API_BASE}/categories`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const bankRes = await fetch(`${API_BASE}/banks`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if(catRes.ok) {
+            const cats = await catRes.json();
+            document.getElementById('categoryList').innerHTML = cats.map(c => `<option value="${c}">`).join('');
         }
-    } catch (error) {
-        console.error('Export failed:', error);
-        showMessage('Export failed: ' + error.message, 'error');
-    }
-}
-
-// Export to CSV function
-async function exportToCSV() {
-    try {
-        const response = await fetch(`${API_BASE}/transactions`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            const transactions = data.transactions;
-            
-            // Create CSV content
-            let csvContent = "Date,Type,Amount (₹),Category,Remark,Bank/Cash\n";
-            
-            transactions.forEach(transaction => {
-                const date = new Date(transaction.date).toLocaleString('en-IN');
-                const type = transaction.type;
-                const amount = transaction.amount;
-                const category = `"${transaction.category}"`;
-                const remark = `"${transaction.remark || ''}"`;
-                const bankCash = `"${transaction.bank_cash}"`;
-                
-                csvContent += `${date},${type},${amount},${category},${remark},${bankCash}\n`;
-            });
-            
-            // Create and download file
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            const currentDate = new Date().toISOString().split('T')[0];
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `cashbook_${currentUser}_${currentDate}.csv`);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showMessage('CSV file downloaded successfully!', 'success');
+        if(bankRes.ok) {
+            const banks = await bankRes.json();
+            document.getElementById('bankList').innerHTML = banks.map(b => `<option value="${b}">`).join('');
         }
-    } catch (error) {
-        console.error('Export failed:', error);
-        showMessage('Export failed: ' + error.message, 'error');
-    }
+    } catch(e) {}
 }
 
-// Print table function
-function printTable() {
-    const printWindow = window.open('', '_blank');
-    const table = document.getElementById('transactionsTable').cloneNode(true);
-    
-    // Remove action buttons from print
-    const actionCells = table.querySelectorAll('td:last-child, th:last-child');
-    actionCells.forEach(cell => cell.remove());
-    
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Cash Book - ${currentUser}</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        margin: 20px; 
-                        color: #333;
-                    }
-                    h1 { 
-                        color: #333; 
-                        margin-bottom: 10px;
-                    }
-                    table { 
-                        width: 100%; 
-                        border-collapse: collapse; 
-                        margin-top: 15px;
-                    }
-                    th, td { 
-                        border: 1px solid #ddd; 
-                        padding: 8px; 
-                        text-align: left;
-                        font-size: 12px;
-                    }
-                    th { 
-                        background-color: #f2f2f2; 
-                        font-weight: bold;
-                    }
-                    .type-in { color: #28a745; font-weight: bold; }
-                    .type-out { color: #dc3545; font-weight: bold; }
-                    @media print {
-                        body { margin: 0; }
-                        button { display: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <h1>Cash Book Transactions - ${currentUser}</h1>
-                <p><strong>Generated on:</strong> ${new Date().toLocaleString('en-IN')}</p>
-                ${table.outerHTML}
-            </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-}
-
-// Update displayTransactions function to use compact layout
-function displayTransactions(transactions) {
-    const tbody = document.getElementById('transactionsBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    transactions.forEach(transaction => {
-        const row = document.createElement('tr');
-        const transactionDate = new Date(transaction.date);
-        const formattedDate = transactionDate.toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        
-        row.innerHTML = `
-            <td class="compact-date">${formattedDate}</td>
-            <td><span class="type-${transaction.type.toLowerCase()}">${transaction.type}</span></td>
-            <td>₹${parseFloat(transaction.amount).toFixed(2)}</td>
-            <td>${transaction.category}</td>
-            <td>${transaction.remark}</td>
-            <td>${transaction.bank_cash}</td>
-            <td>
-                <button onclick="editTransaction('${transaction.transaction_id}')" class="btn-secondary">Edit</button>
-                <button onclick="deleteTransaction('${transaction.transaction_id}')" class="btn-danger">Delete</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
+// Close Modal Logic
+document.querySelector('.close').onclick = () => document.getElementById('editModal').style.display = 'none';
+window.onclick = (e) => { if(e.target == document.getElementById('editModal')) document.getElementById('editModal').style.display = 'none'; }
