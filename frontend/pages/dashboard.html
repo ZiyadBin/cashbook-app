@@ -2,95 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cash Book - Analytics</title>
+    <title>Financial Command Center</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Cash Book - Analytics</h1>
+        <header class="glass-header">
+            <div class="brand">
+                <i class="fa-solid fa-chart-simple"></i>
+                <h1>Analytics</h1>
+            </div>
             <div class="user-info">
-                <span id="usernameDisplay">Welcome</span>
-                <button onclick="goToMain()" class="btn-secondary">Back to Transactions</button>
-                <button onclick="logout()" class="btn-secondary">Logout</button>
+                <button onclick="location.href='/'" class="btn-secondary small-btn"><i class="fa-solid fa-arrow-left"></i> Back to Entry</button>
             </div>
         </header>
 
-        <div class="filter-controls">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Filter by Type:</label>
-                    <select id="typeFilter">
-                        <option value="ALL">All Transactions</option>
-                        <option value="IN">Cash IN Only</option>
-                        <option value="OUT">Cash OUT Only</option>
-                    </select>
+        <div class="metrics-grid">
+            <div class="metric-card glass-panel">
+                <div class="icon-box green"><i class="fa-solid fa-wallet"></i></div>
+                <div class="text-box">
+                    <span class="label">Total Income</span>
+                    <h2 id="dashIncome">₹0.00</h2>
                 </div>
-                <div class="form-group">
-                    <label>Filter by Bank/Cash:</label>
-                    <select id="bankFilter">
-                        <option value="ALL">All</option>
-                    </select>
+            </div>
+
+            <div class="metric-card glass-panel">
+                <div class="icon-box red"><i class="fa-solid fa-fire"></i></div>
+                <div class="text-box">
+                    <span class="label">Real Spending</span>
+                    <h2 id="dashExpense">₹0.00</h2>
                 </div>
-                <div class="form-group">
-                    <button onclick="loadDashboard()" class="btn-primary">Apply Filters</button>
+            </div>
+
+            <div class="metric-card glass-panel">
+                <div class="icon-box purple"><i class="fa-solid fa-piggy-bank"></i></div>
+                <div class="text-box">
+                    <span class="label">Wealth Added</span>
+                    <h2 id="dashWealth">₹0.00</h2>
+                    <small class="hint">Savings & Investments</small>
+                </div>
+            </div>
+
+            <div class="metric-card glass-panel highlight-card">
+                <div class="icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
+                <div class="text-box">
+                    <span class="label">Net Balance</span>
+                    <h2 id="dashBalance">₹0.00</h2>
                 </div>
             </div>
         </div>
 
-        <div class="dashboard-cards">
-            <div class="card">
-                <h3>Total Balance</h3>
-                <p id="totalBalance">₹0.00</p>
-            </div>
-            <div class="card">
-                <h3>Total Income</h3>
-                <p id="totalIncome">₹0.00</p>
-            </div>
-            <div class="card">
-                <h3>Total Expenses</h3>
-                <p id="totalExpenses">₹0.00</p>
-            </div>
-        </div>
-
-        <div class="charts-container">
-            <div class="chart-section">
-                <h2>Expenses by Category</h2>
-                <canvas id="categoryChart"></canvas>
-            </div>
+        <div class="charts-layout">
             
-            <div class="chart-section">
-                <h2>Income vs Expenses</h2>
-                <canvas id="incomeExpenseChart"></canvas>
+            <div class="chart-card glass-panel">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-chart-pie"></i> Where is money going?</h3>
+                    <small>(Excludes Savings)</small>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="expenseChart"></canvas>
+                </div>
             </div>
 
-            <div class="chart-section">
-                <h2>Transactions by Bank/Cash</h2>
-                <canvas id="bankChart"></canvas>
-            </div>
-        </div>
+            <div class="health-card glass-panel">
+                <h3><i class="fa-solid fa-heart-pulse"></i> Financial Health</h3>
+                
+                <div class="health-stat">
+                    <div class="stat-label">
+                        <span>Wealth Rate</span>
+                        <span id="wealthPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="fill purple" id="wealthBar" style="width: 0%"></div>
+                    </div>
+                    <p class="stat-desc">Percentage of income saved/invested.</p>
+                </div>
 
-        <div class="category-breakdown">
-            <h2>Detailed Category Breakdown</h2>
-            <table id="categoryTable">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Type</th>
-                        <th>Bank/Cash</th>
-                        <th>Amount</th>
-                        <th>Percentage</th>
-                    </tr>
-                </thead>
-                <tbody id="categoryBody">
-                </tbody>
-            </table>
+                <div class="divider"></div>
+
+                <div class="bank-list">
+                    <h4>Wallet Balances (Est.)</h4>
+                    <ul id="bankBalanceList">
+                        </ul>
+                </div>
+            </div>
         </div>
     </div>
-    
+
     <script src="/js/script.js"></script>
     <script src="/js/dashboard.js"></script>
 </body>
