@@ -5,21 +5,33 @@ let displayedCount = 10;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadFullDashboard();
-    loadDropdownsForFilter(); // defined in script.js, reusing logic if available or implementing locally
+    loadDropdownsForFilter();
 });
 
 async function loadFullDashboard() {
-    const typeFilter = document.getElementById('typeFilter').value;
-    const bankFilter = document.getElementById('bankFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const bank = document.getElementById('bankFilter').value;
+    const category = document.getElementById('catFilter').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
 
     try {
+        // Build URL with params
+        const params = new URLSearchParams({
+            type: type,
+            bank: bank,
+            category: category,
+            startDate: startDate,
+            endDate: endDate
+        });
+
         // 1. Get Analytics Data
-        const res = await fetch(`${API_BASE}/dashboard?type=${typeFilter}&bank=${bankFilter}`, { 
+        const res = await fetch(`${API_BASE}/dashboard?${params}`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         
-        // 2. Get Full History (We fetch all, then paginate locally for speed)
-        const histRes = await fetch(`${API_BASE}/transactions`, { 
+        // 2. Get Full History
+        const histRes = await fetch(`${API_BASE}/transactions?${params}`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
 
@@ -33,20 +45,119 @@ async function loadFullDashboard() {
             animateValue('dashAssets', data.summary.assets);
             animateValue('dashBalance', data.summary.balance);
             
+            // Update "Money Out" Bar
+            document.getElementById('totalMoneyOut').textContent = `₹${data.summary.total_money_out.toLocaleString()}`;
+            // Just an animation effect, always full width for visual impact
+            document.getElementById('moneyOutBar').style.width = '100%'; 
+
+            // Update Lending Total
+            const lentColor = data.summary.lent >= 0 ? '#f59e0b' : '#ef4444';
+            document.getElementById('totalLent').style.color = lentColor;
             document.getElementById('totalLent').textContent = `₹${data.summary.lent.toLocaleString()}`;
 
             // Render Charts
             renderExpenseChart(data.expense_chart);
             renderLendingChart(data.lending_chart);
+            renderAssetList(data.asset_chart);
 
             // Setup Table
             allTransactions = histData.transactions;
-            displayedCount = 10; // Reset count on filter change
-            renderHistoryTable();
+            
+            // Apply frontend filters to table as well (logic consistency)
+            applyFrontendTableFilters(startDate, endDate, category, bank, type);
         }
     } catch (error) {
         console.error("Dashboard Error:", error);
     }
+}
+
+function applyFrontendTableFilters(start, end, cat, bank, type) {
+    let filtered = allTransactions.filter(t => {
+        let valid = true;
+        if(type !== 'ALL' && t.type !== type) valid = false;
+        if(bank !== 'ALL' && t.bank_cash !== bank) valid = false;
+        if(cat !== 'ALL' && t.category !== cat) valid = false;
+        
+        if(start) {
+            if(new Date(t.date) < new Date(start)) valid = false;
+        }
+        if(end) {
+            // End date needs to encompass the full day
+            let e = new Date(end); e.setHours(23,59,59);
+            if(new Date(t.date) > e) valid = false;
+        }
+        return valid;
+    });
+    
+    // Reset pagination
+    displayedCount = 10;
+    renderHistoryTable(filtered);
+}
+
+function renderHistoryTable(filteredData) {
+    const tbody = document.getElementById('historyBody');
+    tbody.innerHTML = '';
+    const visibleItems = filteredData.slice(0, displayedCount);
+
+    visibleItems.forEach(t => {
+        const tr = document.createElement('tr');
+        const dateStr = new Date(t.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'});
+        
+        tr.innerHTML = `
+            <td><input type="checkbox" class="row-check" value="${t.transaction_id}" onchange="updateBulkState()"></td>
+            <td>${dateStr}</td>
+            <td><span class="type-badge type-${t.type.toLowerCase()}">${t.type}</span></td>
+            <td>${t.category}</td>
+            <td>${t.remark || '-'}</td>
+            <td>${t.bank_cash}</td>
+            <td style="text-align: right; font-weight: 600;">₹${t.amount.toLocaleString()}</td>
+            <td style="text-align: center;">
+                <button onclick="openEditModal('${t.transaction_id}')" class="btn-secondary small-btn"><i class="fa-solid fa-pen"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Handle "Load More" visibility
+    const btn = document.getElementById('loadMoreBtn');
+    btn.style.display = displayedCount >= filteredData.length ? 'none' : 'block';
+    
+    // Attach the filtered data to the button so it knows what to load next
+    btn.onclick = () => {
+        displayedCount += 50;
+        renderHistoryTable(filteredData);
+    };
+}
+
+// --- RENDER ASSETS (New Feature) ---
+function renderAssetList(data) {
+    const container = document.getElementById('assetList');
+    container.innerHTML = '';
+    
+    if(data.length === 0) {
+        container.innerHTML = '<p class="hint-text">No assets found.</p>';
+        return;
+    }
+
+    // Sort by highest value
+    data.sort((a,b) => b.amount - a.amount);
+    const maxVal = data[0].amount;
+
+    data.forEach(a => {
+        const width = (a.amount / maxVal) * 100;
+        const div = document.createElement('div');
+        div.className = 'asset-item';
+        div.innerHTML = `
+            <div class="asset-info">
+                <span>${a.category}</span>
+                <span class="asset-val">₹${a.amount.toLocaleString()}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="fill purple" style="width: ${width}%"></div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
 }
 
 // --- CHART LOGIC ---
@@ -55,7 +166,6 @@ function renderExpenseChart(data) {
     if (expenseChartInstance) expenseChartInstance.destroy();
 
     data.sort((a, b) => b.amount - a.amount);
-    
     expenseChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -79,74 +189,55 @@ function renderLendingChart(data) {
     const ctx = document.getElementById('lendingChart').getContext('2d');
     if (lendingChartInstance) lendingChartInstance.destroy();
 
+    // Color logic: Red if negative (you owe them), Yellow if positive (they owe you)
+    const colors = data.map(d => d.amount >= 0 ? '#f59e0b' : '#ef4444');
+
     lendingChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: data.map(d => d.person),
             datasets: [{
-                label: 'Amount Lent',
                 data: data.map(d => d.amount),
-                backgroundColor: '#f59e0b',
+                backgroundColor: colors,
                 borderRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            indexAxis: 'y', // Horizontal Bar
+            indexAxis: 'y',
             plugins: { legend: { display: false } },
             scales: { x: { grid: { display: false } } }
         }
     });
 }
 
-// --- TABLE & PAGINATION LOGIC ---
-function renderHistoryTable() {
-    const tbody = document.getElementById('historyBody');
-    tbody.innerHTML = '';
-    
-    // Filter based on current dashboard selection if needed, 
-    // but user requested full history table here.
-    // We will apply the filters selected at top to the table too for consistency
-    const typeFilter = document.getElementById('typeFilter').value;
-    const bankFilter = document.getElementById('bankFilter').value;
-
-    let filtered = allTransactions.filter(t => {
-        return (typeFilter === 'ALL' || t.type === typeFilter) &&
-               (bankFilter === 'ALL' || t.bank_cash === bankFilter);
-    });
-
-    // Slice for pagination
-    const visibleItems = filtered.slice(0, displayedCount);
-
-    visibleItems.forEach(t => {
-        const tr = document.createElement('tr');
-        const dateStr = new Date(t.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'});
+// --- FILTER DROPDOWNS ---
+async function loadDropdownsForFilter() {
+    try {
+        const bankRes = await fetch(`${API_BASE}/banks`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const catRes = await fetch(`${API_BASE}/categories`, { headers: { 'Authorization': `Bearer ${token}` } });
         
-        tr.innerHTML = `
-            <td><input type="checkbox" class="row-check" value="${t.transaction_id}" onchange="updateBulkState()"></td>
-            <td>${dateStr}</td>
-            <td><span class="type-badge type-${t.type.toLowerCase()}">${t.type}</span></td>
-            <td>${t.category}</td>
-            <td>${t.remark || '-'}</td>
-            <td>${t.bank_cash}</td>
-            <td style="text-align: right; font-weight: 600;">₹${t.amount.toLocaleString()}</td>
-            <td style="text-align: center;">
-                <button onclick="openEditModal('${t.transaction_id}')" class="btn-secondary small-btn"><i class="fa-solid fa-pen"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    // Hide "Load More" if no more items
-    const btn = document.getElementById('loadMoreBtn');
-    if (displayedCount >= filtered.length) btn.style.display = 'none';
-    else btn.style.display = 'block';
+        if(bankRes.ok) {
+            const banks = await bankRes.json();
+            const bFilter = document.getElementById('bankFilter');
+            banks.forEach(b => bFilter.innerHTML += `<option value="${b}">${b}</option>`);
+        }
+        if(catRes.ok) {
+            const cats = await catRes.json();
+            const cFilter = document.getElementById('catFilter');
+            cats.forEach(c => cFilter.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+    } catch(e) {}
 }
 
-function loadMore() {
-    displayedCount += 10; // Or 50 as requested
-    renderHistoryTable();
+function resetFilters() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('typeFilter').value = 'ALL';
+    document.getElementById('bankFilter').value = 'ALL';
+    document.getElementById('catFilter').value = 'ALL';
+    loadFullDashboard();
 }
 
 // --- BULK ACTIONS ---
@@ -160,7 +251,6 @@ function toggleSelectAll() {
 function updateBulkState() {
     const checked = document.querySelectorAll('.row-check:checked');
     const bar = document.getElementById('bulkActions');
-    
     if (checked.length > 0) {
         bar.style.display = 'flex';
         document.getElementById('selectedCount').textContent = `${checked.length} Selected`;
@@ -174,47 +264,17 @@ async function bulkDelete() {
     if (!confirm(`Delete ${checked.length} transactions? This cannot be undone.`)) return;
 
     for (const box of checked) {
-        const id = box.value;
-        await fetch(`${API_BASE}/transactions/${id}`, { 
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` } 
+        await fetch(`${API_BASE}/transactions/${box.value}`, { 
+            method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } 
         });
     }
-    
-    // Refresh
     loadFullDashboard();
     document.getElementById('bulkActions').style.display = 'none';
     document.getElementById('selectAll').checked = false;
-    showMessage('Bulk delete successful', 'success');
 }
 
-// --- HELPERS ---
 function animateValue(id, end) {
     const obj = document.getElementById(id);
     if(!obj) return;
-    const start = 0; const duration = 800;
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        obj.innerHTML = `₹${Math.floor(progress * (end - start) + start).toLocaleString()}`;
-        if (progress < 1) window.requestAnimationFrame(step);
-    };
-    window.requestAnimationFrame(step);
-}
-
-// Copy of loadDropdowns logic specifically for the filter bar
-async function loadDropdownsForFilter() {
-    try {
-        const bankRes = await fetch(`${API_BASE}/banks`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if(bankRes.ok) {
-            const banks = await bankRes.json();
-            const filter = document.getElementById('bankFilter');
-            banks.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b; opt.textContent = b;
-                filter.appendChild(opt);
-            });
-        }
-    } catch(e) {}
+    obj.innerHTML = `₹${end.toLocaleString()}`;
 }
