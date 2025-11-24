@@ -174,14 +174,13 @@ def get_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# --- Analytics Routes ---
 @app.route('/api/dashboard')
 @jwt_required()
 def get_dashboard():
     try:
         current_user = get_current_user_obj()
         
-        # --- 1. FILTERING ---
+        # 1. Base Query with Filters
         query = Transaction.query.filter_by(user_id=current_user.id)
         
         type_filter = request.args.get('type', 'ALL')
@@ -194,117 +193,95 @@ def get_dashboard():
         if bank_filter != 'ALL': query = query.filter_by(bank_cash=bank_filter)
         if cat_filter != 'ALL': query = query.filter_by(category=cat_filter)
         
-        # Date Range Filter
         if start_date:
             query = query.filter(Transaction.date >= datetime.fromisoformat(start_date))
         if end_date:
-            # Add 23:59:59 to include the full end day
             e_date = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
             query = query.filter(Transaction.date <= e_date)
         
         all_transactions = query.all()
         
-        # --- 2. DEFINITIONS ---
+        # 2. Buckets
         asset_keywords = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund', 'gold', 'pf', 'ppf']
         lending_keywords = ['lent', 'loan', 'given', 'borrowed']
         
-        # --- 3. NET CALCULATION LOGIC ---
-        
-        # A. Lending (Tracked by Person/Remark)
-        lending_tracker = {} 
-        
-        # B. Real Expenses (Tracked by Category, Net)
-        expense_tracker = {}
-        
-        # C. Assets (Tracked by Category, Net)
-        asset_tracker = {}
-        
-        # D. Income (Pure Income categories only)
+        # 3. Calculation Variables
         total_income = 0
+        total_out = 0
+        
+        expense_out = 0
+        asset_out = 0
+        lending_out = 0
+        lending_in = 0
+        
+        # Trackers for Charts
+        expense_map = {}
+        lending_map = {}
+        asset_details = [] # List of {category, amount, remark}
+        money_out_map = {} # For "Total Money Out" chart
         
         for t in all_transactions:
             cat_lower = t.category.lower()
             
-            # --- LOGIC 1: LENDING ---
-            if cat_lower in lending_keywords:
-                person = t.remark.strip() if t.remark else "Unknown"
-                if person not in lending_tracker: lending_tracker[person] = 0
+            if t.type == 'IN':
+                total_income += t.amount
+                if cat_lower in lending_keywords:
+                    lending_in += t.amount
+                    person = t.remark.strip() if t.remark else "Unknown"
+                    if person not in lending_map: lending_map[person] = 0
+                    lending_map[person] -= t.amount
+            
+            elif t.type == 'OUT':
+                total_out += t.amount
                 
-                # If OUT, they owe us (+). If IN, they paid back (-).
-                if t.type == 'OUT': lending_tracker[person] += t.amount
-                else: lending_tracker[person] -= t.amount
-
-            # --- LOGIC 2: ASSETS ---
-            elif cat_lower in asset_keywords:
-                if t.category not in asset_tracker: asset_tracker[t.category] = 0
-                
-                # If OUT, we bought asset (+). If IN, we sold/withdrew (-).
-                if t.type == 'OUT': asset_tracker[t.category] += t.amount
-                else: asset_tracker[t.category] -= t.amount
-
-            # --- LOGIC 3: EXPENSES vs INCOME ---
-            else:
-                if t.type == 'IN':
-                    # Check if this is a refund for an existing expense category or pure income
-                    # Simplified: We count IN as Income, UNLESS we calculate Net Expense later.
-                    # For this logic: Pure Income is money coming in that isn't a refund.
-                    # But user wants "Credit Card IN" to reduce "Credit Card OUT".
+                # Check Category Type
+                if cat_lower in lending_keywords:
+                    lending_out += t.amount
+                    person = t.remark.strip() if t.remark else "Unknown"
+                    if person not in lending_map: lending_map[person] = 0
+                    lending_map[person] += t.amount
                     
-                    # We will treat this as a "Negative Expense" for calculation
-                    if t.category not in expense_tracker: expense_tracker[t.category] = 0
-                    expense_tracker[t.category] -= t.amount
+                elif cat_lower in asset_keywords:
+                    asset_out += t.amount
+                    asset_details.append({
+                        'category': t.category,
+                        'amount': t.amount,
+                        'remark': t.remark or t.category
+                    })
+                    # Add to Money Out Chart
+                    if t.category not in money_out_map: money_out_map[t.category] = 0
+                    money_out_map[t.category] += t.amount
                     
-                    # Also track as Total Gross Income for the top card
-                    total_income += t.amount
                 else:
-                    # Type OUT
-                    if t.category not in expense_tracker: expense_tracker[t.category] = 0
-                    expense_tracker[t.category] += t.amount
+                    # Regular Expense
+                    expense_out += t.amount
+                    if t.category not in expense_map: expense_map[t.category] = 0
+                    expense_map[t.category] += t.amount
+                    # Add to Money Out Chart
+                    if t.category not in money_out_map: money_out_map[t.category] = 0
+                    money_out_map[t.category] += t.amount
 
-        # --- 4. FINAL AGGREGATION ---
+        # 4. Final Calculations
+        # Net Lent (Money currently with others)
+        net_lent = lending_out - lending_in
         
-        # Calculate Total Net Lending (Money currently outside)
-        net_lent_total = sum(amount for amount in lending_tracker.values() if amount > 0)
+        # Total Net Assets = Money in Savings/Investments + Money owed to us
+        net_assets = asset_out + net_lent
         
-        # Calculate Total Net Assets (Total saved)
-        net_assets_total = sum(asset_tracker.values())
-        
-        # Calculate Total Net Expenses (Only positive values, effectively Expense - Refunds)
-        # If a category is negative (e.g. got more refunds than spent), it's technically income, 
-        # but for dashboard we usually just show 0 or negative.
-        net_expense_total = sum(amount for amount in expense_tracker.values())
-        
-        # Total Money Out (The "Big Bar") = Expenses + Assets + Pending Lending
-        total_money_out = net_expense_total + net_assets_total + net_lent_total
-        
-        # Current Balance (from filtered set)
-        # Note: calculating balance from a filtered date range is tricky (it shows "Cash Flow" for that period)
-        # To show actual wallet balance, we usually need ALL time. 
-        # But for this view, let's show Cash Flow Balance (Net Change)
-        net_balance = total_income - (sum(t.amount for t in all_transactions if t.type == 'OUT'))
-
-        # Format Lists for Frontend
-        # 1. Lending: Only show people who owe money (> 0)
-        lending_list = [{'person': k, 'amount': v} for k, v in lending_tracker.items() if v != 0]
-        
-        # 2. Assets: All assets
-        asset_list = [{'category': k, 'amount': v} for k, v in asset_tracker.items()]
-        
-        # 3. Expenses: Only categories with Net Spend > 0
-        expense_list = [{'category': k, 'amount': v} for k, v in expense_tracker.items() if v > 0]
+        # Wallet Balance = Cash In - Cash Out
+        balance = total_income - total_out
 
         return jsonify({
             'summary': {
                 'income': total_income,
-                'expenses': net_expense_total,
-                'assets': net_assets_total,
-                'lent': net_lent_total,
-                'balance': net_balance,
-                'total_money_out': total_money_out
+                'expenses': expense_out,
+                'assets': net_assets,
+                'balance': balance
             },
-            'expense_chart': expense_list,
-            'lending_chart': lending_list,
-            'asset_chart': asset_list
+            'expense_chart': [{'category': k, 'amount': v} for k, v in expense_map.items()],
+            'lending_chart': [{'person': k, 'amount': v} for k, v in lending_map.items() if v != 0],
+            'asset_chart': asset_details,
+            'money_out_chart': [{'category': k, 'amount': v} for k, v in money_out_map.items()]
         }), 200
         
     except Exception as e:
