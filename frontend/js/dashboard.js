@@ -1,213 +1,117 @@
-let categoryChart, incomeExpenseChart, bankChart;
+let expenseChartInstance = null;
 
-// Load dashboard data
-async function loadDashboard() {
-    const typeFilter = document.getElementById('typeFilter').value;
-    const bankFilter = document.getElementById('bankFilter').value;
-    
+document.addEventListener('DOMContentLoaded', () => {
+    loadFullDashboard();
+});
+
+async function loadFullDashboard() {
     try {
-        const response = await fetch(`${API_BASE}/dashboard?type=${typeFilter}&bank=${bankFilter}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        const res = await fetch(`${API_BASE}/dashboard`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
         });
         
-        if (response.ok) {
-            const data = await response.json();
-            updateDashboard(data);
+        if (res.ok) {
+            const data = await res.json();
+            
+            // 1. Animate Numbers
+            animateValue('dashIncome', data.summary.total_income);
+            animateValue('dashExpense', data.summary.real_expenses);
+            animateValue('dashWealth', data.summary.wealth_added);
+            animateValue('dashBalance', data.summary.current_balance);
+
+            // 2. Calculate Wealth Rate
+            const income = data.summary.total_income;
+            const saved = data.summary.wealth_added;
+            const rate = income > 0 ? Math.round((saved / income) * 100) : 0;
+            
+            document.getElementById('wealthPercent').textContent = `${rate}%`;
+            document.getElementById('wealthBar').style.width = `${rate}%`;
+
+            // 3. Render Wallet List
+            const bankList = document.getElementById('bankBalanceList');
+            bankList.innerHTML = '';
+            data.bank_chart.forEach(b => {
+                const li = document.createElement('li');
+                const isPos = b.amount >= 0;
+                li.innerHTML = `
+                    <span>${b.bank_cash}</span>
+                    <span class="bank-amount ${isPos ? 'pos' : 'neg'}">
+                        ${isPos ? '+' : ''}₹${b.amount.toLocaleString()}
+                    </span>
+                `;
+                bankList.appendChild(li);
+            });
+
+            // 4. Render Chart
+            renderChart(data.expense_chart);
         }
     } catch (error) {
-        console.error('Failed to load dashboard:', error);
+        console.error("Dashboard Error:", error);
     }
 }
 
-// Update dashboard with data
-function updateDashboard(data) {
-    // Update summary cards
-    document.getElementById('totalBalance').textContent = `₹${data.summary.balance.toFixed(2)}`;
-    document.getElementById('totalIncome').textContent = `₹${data.summary.cash_in.toFixed(2)}`;
-    document.getElementById('totalExpenses').textContent = `₹${data.summary.cash_out.toFixed(2)}`;
+function renderChart(data) {
+    const ctx = document.getElementById('expenseChart').getContext('2d');
     
-    // Update charts
-    updateCategoryChart(data.category_breakdown);
-    updateIncomeExpenseChart(data.summary);
-    updateBankChart(data.bank_breakdown);
-    updateCategoryTable(data.category_breakdown);
-}
+    if (expenseChartInstance) expenseChartInstance.destroy();
 
-// Category pie chart
-function updateCategoryChart(categories) {
-    const ctx = document.getElementById('categoryChart').getContext('2d');
+    // Sort by amount desc and take top 6, group others
+    data.sort((a, b) => b.amount - a.amount);
     
-    if (categoryChart) {
-        categoryChart.destroy();
-    }
-    
-    const expenseCategories = categories.filter(cat => cat.type === 'OUT');
-    
-    categoryChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: expenseCategories.map(cat => cat.category),
-            datasets: [{
-                data: expenseCategories.map(cat => cat.amount),
-                backgroundColor: [
-                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Where Your Money Goes'
-                }
-            }
-        }
-    });
-}
+    const labels = data.map(d => d.category);
+    const values = data.map(d => d.amount);
 
-// Income vs Expense bar chart
-function updateIncomeExpenseChart(summary) {
-    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-    
-    if (incomeExpenseChart) {
-        incomeExpenseChart.destroy();
-    }
-    
-    incomeExpenseChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Income', 'Expenses'],
-            datasets: [{
-                label: 'Amount (₹)',
-                data: [summary.cash_in, summary.cash_out],
-                backgroundColor: ['#28a745', '#dc3545']
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Bank/Cash chart
-function updateBankChart(bankData) {
-    const ctx = document.getElementById('bankChart').getContext('2d');
-    
-    if (bankChart) {
-        bankChart.destroy();
-    }
-    
-    bankChart = new Chart(ctx, {
+    expenseChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: bankData.map(item => item.bank_cash),
+            labels: labels,
             datasets: [{
-                data: bankData.map(item => item.amount),
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
+                data: values,
+                backgroundColor: [
+                    '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
+                    '#3b82f6', '#8b5cf6', '#9ca3af'
+                ],
+                borderWidth: 0,
+                hoverOffset: 10
             }]
         },
         options: {
-            responsive: true
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 12, usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) label += ': ';
+                            label += '₹' + context.raw.toLocaleString();
+                            return label;
+                        }
+                    }
+                }
+            },
+            cutout: '70%', // Makes it a thin ring
         }
     });
 }
 
-// Update category breakdown table
-function updateCategoryTable(categories) {
-    const tbody = document.getElementById('categoryBody');
-    tbody.innerHTML = '';
+function animateValue(id, end) {
+    const obj = document.getElementById(id);
+    if(!obj) return;
     
-    const total = categories.reduce((sum, cat) => sum + cat.amount, 0);
+    const start = 0;
+    const duration = 1000;
+    let startTimestamp = null;
     
-    categories.forEach(category => {
-        const percentage = total > 0 ? ((category.amount / total) * 100).toFixed(1) : 0;
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${category.category}</td>
-            <td><span class="type-${category.type.toLowerCase()}">${category.type}</span></td>
-            <td>${category.bank_cash}</td>
-            <td>₹${category.amount.toFixed(2)}</td>
-            <td>${percentage}%</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-// Load bank filter options
-async function loadBankFilters() {
-    try {
-        const response = await fetch(`${API_BASE}/banks`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const banks = await response.json();
-            const bankFilter = document.getElementById('bankFilter');
-            
-            banks.forEach(bank => {
-                const option = document.createElement('option');
-                option.value = bank;
-                option.textContent = bank;
-                bankFilter.appendChild(option);
-            });
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const value = Math.floor(progress * (end - start) + start);
+        obj.innerHTML = `₹${value.toLocaleString()}`;
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
         }
-    } catch (error) {
-        console.error('Failed to load banks:', error);
-    }
+    };
+    window.requestAnimationFrame(step);
 }
-
-// Load category filter options
-async function loadCategoryFilters() {
-    try {
-        const response = await fetch(`${API_BASE}/categories`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const categories = await response.json();
-            const categoryFilter = document.getElementById('categoryFilter');
-            if (categoryFilter) {
-                categoryFilter.innerHTML = '<option value="ALL">All Categories</option>';
-                categories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat;
-                    option.textContent = cat;
-                    categoryFilter.appendChild(option);
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Failed to load categories:', error);
-    }
-}
-
-// Navigation
-function goToMain() {
-    window.location.href = '/';
-}
-
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
-    if (!token || !currentUser) {
-        window.location.href = '/login';
-        return;
-    }
-    
-    document.getElementById('usernameDisplay').textContent = `Welcome, ${currentUser}`;
-    loadBankFilters();
-    loadCategoryFilters();
-    loadDashboard();
-});
