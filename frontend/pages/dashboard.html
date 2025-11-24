@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Financial Command Center</title>
+    <title>Analytics & Reports</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,13 +12,30 @@
     <div class="container">
         <header class="glass-header">
             <div class="brand">
-                <i class="fa-solid fa-chart-simple"></i>
+                <i class="fa-solid fa-chart-column"></i>
                 <h1>Analytics</h1>
             </div>
             <div class="user-info">
-                <button onclick="location.href='/'" class="btn-secondary small-btn"><i class="fa-solid fa-arrow-left"></i> Back to Entry</button>
+                <button onclick="location.href='/'" class="btn-secondary small-btn"><i class="fa-solid fa-arrow-left"></i> Back</button>
             </div>
         </header>
+
+        <div class="filter-bar glass-panel">
+            <div class="filter-group">
+                <label><i class="fa-solid fa-filter"></i> Filter By:</label>
+                <select id="typeFilter" onchange="loadFullDashboard()">
+                    <option value="ALL">All Types</option>
+                    <option value="IN">Income Only</option>
+                    <option value="OUT">Expense Only</option>
+                </select>
+                <select id="bankFilter" onchange="loadFullDashboard()">
+                    <option value="ALL">All Banks</option>
+                    </select>
+            </div>
+            <div class="refresh-box">
+                <button onclick="loadFullDashboard()" class="btn-icon"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+        </div>
 
         <div class="metrics-grid">
             <div class="metric-card glass-panel">
@@ -28,24 +45,20 @@
                     <h2 id="dashIncome">₹0.00</h2>
                 </div>
             </div>
-
             <div class="metric-card glass-panel">
                 <div class="icon-box red"><i class="fa-solid fa-fire"></i></div>
                 <div class="text-box">
-                    <span class="label">Real Spending</span>
+                    <span class="label">Expenses</span>
                     <h2 id="dashExpense">₹0.00</h2>
                 </div>
             </div>
-
             <div class="metric-card glass-panel">
                 <div class="icon-box purple"><i class="fa-solid fa-piggy-bank"></i></div>
                 <div class="text-box">
-                    <span class="label">Wealth Added</span>
-                    <h2 id="dashWealth">₹0.00</h2>
-                    <small class="hint">Savings & Investments</small>
+                    <span class="label">Assets / Savings</span>
+                    <h2 id="dashAssets">₹0.00</h2>
                 </div>
             </div>
-
             <div class="metric-card glass-panel highlight-card">
                 <div class="icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
                 <div class="text-box">
@@ -56,39 +69,103 @@
         </div>
 
         <div class="charts-layout">
-            
             <div class="chart-card glass-panel">
                 <div class="card-header">
-                    <h3><i class="fa-solid fa-chart-pie"></i> Where is money going?</h3>
-                    <small>(Excludes Savings)</small>
+                    <h3><i class="fa-solid fa-chart-pie"></i> Expense Categories</h3>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="expenseChart"></canvas>
                 </div>
             </div>
 
-            <div class="health-card glass-panel">
-                <h3><i class="fa-solid fa-heart-pulse"></i> Financial Health</h3>
-                
-                <div class="health-stat">
-                    <div class="stat-label">
-                        <span>Wealth Rate</span>
-                        <span id="wealthPercent">0%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="fill purple" id="wealthBar" style="width: 0%"></div>
-                    </div>
-                    <p class="stat-desc">Percentage of income saved/invested.</p>
+            <div class="chart-card glass-panel">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-hand-holding-dollar"></i> Lending Tracker</h3>
+                    <h4 id="totalLent" style="color: #f59e0b;">₹0.00</h4>
                 </div>
+                <div class="chart-wrapper">
+                    <canvas id="lendingChart"></canvas>
+                </div>
+                <p class="chart-hint">Money given (Category: Lent)</p>
+            </div>
+        </div>
 
-                <div class="divider"></div>
-
-                <div class="bank-list">
-                    <h4>Wallet Balances (Est.)</h4>
-                    <ul id="bankBalanceList">
-                        </ul>
+        <div class="history-section glass-panel">
+            <div class="list-header">
+                <h2><i class="fa-solid fa-table-list"></i> Full Transaction History</h2>
+                
+                <div id="bulkActions" class="bulk-actions" style="display: none;">
+                    <span id="selectedCount">0 Selected</span>
+                    <button onclick="bulkDelete()" class="btn-danger small-btn"><i class="fa-solid fa-trash"></i> Delete Selected</button>
                 </div>
             </div>
+
+            <div class="table-responsive">
+                <table id="fullHistoryTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Remark</th>
+                            <th>Bank</th>
+                            <th style="text-align: right;">Amount</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="load-more-container">
+                <button onclick="loadMore()" id="loadMoreBtn" class="btn-secondary">Load More (10)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close">&times;</span>
+            <h2>Edit Transaction</h2>
+            <form id="editTransactionForm">
+                <input type="hidden" id="editTransactionId">
+                <div class="form-row full-width">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="datetime-local" id="editDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="editType" required>
+                            <option value="IN">IN</option>
+                            <option value="OUT">OUT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" id="editAmount" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" id="editCategory" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bank/Cash</label>
+                        <input type="text" id="editBankCash" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Remark</label>
+                        <input type="text" id="editRemark">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Update Transaction</button>
+            </form>
         </div>
     </div>
 
