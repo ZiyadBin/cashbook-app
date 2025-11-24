@@ -181,10 +181,9 @@ def get_dashboard():
     try:
         current_user = get_current_user_obj()
         
-        # Base query
+        # 1. Base Query with Filters
         query = Transaction.query.filter_by(user_id=current_user.id)
         
-        # Date Filters (Optional - currently showing all time, can be adapted)
         type_filter = request.args.get('type', 'ALL')
         bank_filter = request.args.get('bank', 'ALL')
         
@@ -195,61 +194,62 @@ def get_dashboard():
         
         all_transactions = query.all()
         
-        # --- LOGIC: Separate Expenses from Assets ---
-        # Define what counts as "Savings" or "Assets" (Case insensitive check later)
-        asset_keywords = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund']
+        # 2. Buckets for Calculation
+        asset_keywords = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund', 'gold']
+        lending_keywords = ['lent', 'loan', 'given']
         
-        income_txns = [t for t in all_transactions if t.type == 'IN']
-        expense_txns = [t for t in all_transactions if t.type == 'OUT']
-        
-        # Split Expenses into "Real Spending" vs "Wealth Creation"
+        income_txns = []
         real_expenses = []
         wealth_assets = []
+        lending_txns = []
         
-        for t in expense_txns:
-            if t.category.lower() in asset_keywords:
-                wealth_assets.append(t)
+        for t in all_transactions:
+            if t.type == 'IN':
+                income_txns.append(t)
             else:
-                real_expenses.append(t)
+                # Logic: Check if it is Lending -> then Asset -> else Expense
+                cat_lower = t.category.lower()
+                if cat_lower in lending_keywords:
+                    lending_txns.append(t)
+                elif cat_lower in asset_keywords:
+                    wealth_assets.append(t)
+                else:
+                    real_expenses.append(t)
 
-        # Calculations
+        # 3. Financial Summaries
         total_income = sum(t.amount for t in income_txns)
-        total_real_expense = sum(t.amount for t in real_expenses)
-        total_wealth_added = sum(t.amount for t in wealth_assets)
+        total_expenses = sum(t.amount for t in real_expenses)
+        total_assets = sum(t.amount for t in wealth_assets)
+        total_lent = sum(t.amount for t in lending_txns)
         
-        # Balance is technically (Income - All Outflows), but we display them differently
-        total_outflow = total_real_expense + total_wealth_added
+        # Balance = Income - (Expenses + Assets + Lent)
+        total_outflow = total_expenses + total_assets + total_lent
         current_balance = total_income - total_outflow
         
-        # Prepare Chart Data (Real Expenses Only)
-        # We aggregate Real Expenses by Category
-        expense_category_map = {}
+        # 4. Charts Data Prep
+        # Expense Breakdown (Pie Chart)
+        expense_map = {}
         for t in real_expenses:
-            if t.category not in expense_category_map: expense_category_map[t.category] = 0
-            expense_category_map[t.category] += t.amount
+            if t.category not in expense_map: expense_map[t.category] = 0
+            expense_map[t.category] += t.amount
             
-        category_breakdown = [{'category': k, 'amount': v} for k, v in expense_category_map.items()]
-        
-        # Bank Breakdown (Where is the money?)
-        # This logic is complex because "Cash" moves in and out. 
-        # For now, we simplify: Show outflow distribution by Bank
-        bank_map = {}
-        for t in all_transactions:
-            if t.bank_cash not in bank_map: bank_map[t.bank_cash] = 0
-            if t.type == 'IN': bank_map[t.bank_cash] += t.amount
-            else: bank_map[t.bank_cash] -= t.amount
-            
-        bank_breakdown = [{'bank_cash': k, 'amount': v} for k, v in bank_map.items()]
+        # Lending Breakdown (Bar Chart by Person/Remark)
+        lending_map = {}
+        for t in lending_txns:
+            person = t.remark if t.remark else "Unknown"
+            if person not in lending_map: lending_map[person] = 0
+            lending_map[person] += t.amount
 
         return jsonify({
             'summary': {
-                'total_income': total_income,
-                'real_expenses': total_real_expense,
-                'wealth_added': total_wealth_added,
-                'current_balance': current_balance
+                'income': total_income,
+                'expenses': total_expenses, # Real spending only
+                'assets': total_assets,     # Savings/Investments
+                'lent': total_lent,         # Money given out
+                'balance': current_balance
             },
-            'expense_chart': category_breakdown, # Only real expenses
-            'bank_chart': bank_breakdown
+            'expense_chart': [{'category': k, 'amount': v} for k, v in expense_map.items()],
+            'lending_chart': [{'person': k, 'amount': v} for k, v in lending_map.items()]
         }), 200
         
     except Exception as e:
