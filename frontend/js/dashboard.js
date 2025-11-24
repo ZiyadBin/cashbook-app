@@ -27,23 +27,19 @@ async function loadFullDashboard() {
             const data = await res.json();
             const histData = await histRes.json();
             
-            // Metrics
             animateValue('dashIncome', data.summary.income);
             animateValue('dashExpense', data.summary.expenses);
             animateValue('dashAssets', data.summary.assets);
             animateValue('dashBalance', data.summary.balance);
             
-            // Chart Headers
             document.getElementById('totalExpenseHeader').textContent = `₹${data.summary.expenses.toLocaleString()}`;
             document.getElementById('totalLentHeader').textContent = `₹${data.summary.lent.toLocaleString()}`;
 
-            // Render Charts
             renderExpenseChart(data.expense_chart);
             renderLendingChart(data.lending_chart);
             renderAssetChart(data.asset_chart);
             renderMoneyOutChart(data.money_out_chart);
 
-            // Table
             allTransactions = histData.transactions;
             displayedCount = 10;
             renderHistoryTable();
@@ -51,15 +47,12 @@ async function loadFullDashboard() {
     } catch (error) { console.error(error); }
 }
 
-
-// --- CHARTS (Updated with Safety Checks) ---
 function renderExpenseChart(data) {
-    if (!data) return; // Safety check
+    if(!data) return;
     const ctx = document.getElementById('expenseChart').getContext('2d');
     if (expenseChartInstance) expenseChartInstance.destroy();
-
     data.sort((a, b) => b.amount - a.amount);
-    // ... rest of chart code
+    
     expenseChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -75,11 +68,10 @@ function renderExpenseChart(data) {
 }
 
 function renderLendingChart(data) {
-    if (!data) return; // Safety check
+    if(!data) return;
     const ctx = document.getElementById('lendingChart').getContext('2d');
     if (lendingChartInstance) lendingChartInstance.destroy();
-    // ... rest of chart code ...
-    // (Use the same chart code as before)
+    
     lendingChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -90,16 +82,16 @@ function renderLendingChart(data) {
                 borderRadius: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
     });
 }
 
 function renderAssetChart(data) {
-    if (!data) return; // Safety check
-    // ... (Use previous asset chart code)
+    if(!data) return;
     const ctx = document.getElementById('assetChart').getContext('2d');
     if (assetChartInstance) assetChartInstance.destroy();
 
+    // X Axis = Remark (Name of investment), Color = Category
     const labels = data.map(d => d.remark);
     const values = data.map(d => d.amount);
     const colors = data.map(d => d.category.toLowerCase().includes('saving') ? '#8b5cf6' : '#3b82f6');
@@ -109,30 +101,27 @@ function renderAssetChart(data) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Value',
                 data: values,
                 backgroundColor: colors,
-                borderRadius: 4
+                borderRadius: 4, barThickness: 30
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 }
 
 function renderMoneyOutChart(data) {
-    if (!data) return; // Safety check
-    // ... (Use previous money out chart code)
+    if(!data) return;
     const ctx = document.getElementById('moneyOutChart').getContext('2d');
     if (moneyOutChartInstance) moneyOutChartInstance.destroy();
-    
-    data.sort((a, b) => b.amount - a.amount); 
+    data.sort((a, b) => b.amount - a.amount);
 
     moneyOutChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: data.map(d => d.category),
             datasets: [{
-                label: 'Total Out',
+                label: 'Cash Outflow',
                 data: data.map(d => d.amount),
                 backgroundColor: '#10b981',
                 borderRadius: 4
@@ -142,7 +131,6 @@ function renderMoneyOutChart(data) {
     });
 }
 
-// --- TABLE & HELPERS ---
 function renderHistoryTable() {
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
@@ -169,7 +157,7 @@ function loadMore() { displayedCount += 50; renderHistoryTable(); }
 function updateBulk() { 
     const c = document.querySelectorAll('.row-check:checked').length;
     document.getElementById('bulkActions').style.display = c > 0 ? 'flex' : 'none';
-    document.getElementById('selectedCount').textContent = c;
+    document.getElementById('selectedCount').textContent = `${c} Selected`;
 }
 function toggleSelectAll() {
     const s = document.getElementById('selectAll').checked;
@@ -182,10 +170,8 @@ async function bulkDelete() {
     for(const c of chk) await fetch(`${API_BASE}/transactions/${c.value}`, { method: 'DELETE', headers: {'Authorization': `Bearer ${token}`} });
     loadFullDashboard();
 }
-// (Keep animateValue, resetFilters, loadDropdownsForFilter from previous)
 function animateValue(id, end) { document.getElementById(id).innerHTML = `₹${end.toLocaleString()}`; }
 async function loadDropdownsForFilter() {
-    // (Same simplified fetch logic as before to populate selects)
     try {
         const bankRes = await fetch(`${API_BASE}/banks`, { headers: { 'Authorization': `Bearer ${token}` } });
         const catRes = await fetch(`${API_BASE}/categories`, { headers: { 'Authorization': `Bearer ${token}` } });
