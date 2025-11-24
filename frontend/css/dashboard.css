@@ -1,98 +1,153 @@
-/* --- DASHBOARD SPECIFIC STYLES --- */
-
-/* 1. Metrics Grid (Top Row) */
-.metrics-grid {
+/* ==============================
+   1. SUMMARY CARDS (The colored boxes)
+   ============================== */
+.summary-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
-.metric-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 25px;
-    transition: transform 0.3s ease;
-}
-
-.metric-card:hover { transform: translateY(-5px); }
-
-.icon-box {
-    width: 60px; height: 60px;
+.card {
+    background: #ffffff;
+    padding: 1.5rem;
     border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.3s;
+    border-top: 4px solid transparent;
 }
 
-.green { background: #d1fae5; color: #059669; }
-.red { background: #fee2e2; color: #dc2626; }
-.purple { background: #ede9fe; color: #7c3aed; }
-.blue { background: #dbeafe; color: #2563eb; }
+.card:hover { transform: translateY(-5px); }
 
-.text-box { display: flex; flex-direction: column; }
-.label { color: #6b7280; font-size: 0.9rem; font-weight: 600; }
-.metric-card h2 { font-size: 1.8rem; margin: 5px 0 0 0; color: #1f2937; }
-.hint { font-size: 0.75rem; color: #8b5cf6; }
+/* Card Colors */
+.card-green { border-color: #10b981; } 
+.card-green p { color: #10b981; }
+.card-green h3 { color: #6b7280; }
 
-.highlight-card { border: 1px solid #6366f1; background: linear-gradient(to right, #ffffff, #f5f3ff); }
+.card-red { border-color: #ef4444; } 
+.card-red p { color: #ef4444; }
+.card-red h3 { color: #6b7280; }
 
-/* 2. Charts Layout */
-.charts-layout {
-    display: grid;
-    grid-template-columns: 2fr 1fr; /* Chart takes 2/3, Health takes 1/3 */
-    gap: 20px;
-}
+.card-blue { border-color: #6366f1; } 
+.card-blue p { color: #6366f1; }
+.card-blue h3 { color: #6b7280; }
 
-.chart-wrapper {
-    position: relative;
-    height: 300px;
-    width: 100%;
+.card h3 { font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600; }
+.card p { font-size: 1.8rem; font-weight: 700; margin: 0; }
+
+
+/* ==============================
+   2. CUSTOM TOGGLE BUTTONS (IN / OUT)
+   ============================== */
+/* The container for the radio buttons */
+.type-toggle-container {
     display: flex;
-    justify-content: center;
+    background: #e5e7eb;
+    padding: 4px;
+    border-radius: 8px;
+    gap: 5px;
+    width: 100%;
+}
+
+/* HIDE the ugly default radio circles */
+.type-toggle-container input[type="radio"] {
+    display: none;
+}
+
+/* Style the labels to look like buttons */
+.toggle-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    color: #6b7280; /* Default gray text */
+    background: transparent;
+}
+
+/* Hover effect */
+.toggle-btn:hover { background: rgba(255,255,255,0.5); }
+
+/* Logic: When "IN" is checked, make the label Green */
+#typeIn:checked + .in-btn {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Logic: When "OUT" is checked, make the label Red */
+#typeOut:checked + .out-btn {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+
+/* ==============================
+   3. LAYOUT & TABLES
+   ============================== */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr; /* Form takes 1 part, List takes 2 parts */
+    gap: 1.5rem;
 }
 
 .card-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 10px;
+}
+.card-header h2 { margin: 0; color: #1f2937; font-size: 1.2rem; }
+
+/* Transaction List Header */
+.list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Table */
+.table-responsive { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; } 
+th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+th { color: #6b7280; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+tr:hover { background-color: #f9fafb; }
+
+/* Column Sizing */
+th:nth-child(1) { width: 22%; } /* Date */
+th:nth-child(2) { width: 10%; } /* Type */
+th:nth-child(3) { width: 18%; } /* Amount */
+th:nth-child(4) { width: 15%; } /* Category */
+th:nth-child(5) { width: 12%; } /* Mode */
+th:nth-child(6) { width: 10%; } /* Remark */
+th:nth-child(7) { width: 13%; text-align: right;} /* Actions */
+td:last-child { text-align: right; }
+
+/* Type Badges (In Table) */
+.type-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+.type-in { background: #d1fae5; color: #065f46; }
+.type-out { background: #fee2e2; color: #991b1b; }
+
+/* Import/Export Panel */
+.import-export-panel {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 12px;
     margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #f3f4f6;
+    border: 1px dashed #cbd5e1;
+    animation: fadeIn 0.3s;
 }
-
-/* 3. Health Card Styles */
-.health-stat { margin-top: 20px; }
-.stat-label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
-
-.progress-bar {
-    width: 100%; height: 10px;
-    background: #e5e7eb;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
-
-.stat-desc { font-size: 0.8rem; color: #9ca3af; margin-top: 8px; }
-
-.divider { height: 1px; background: #e5e7eb; margin: 25px 0; }
-
-/* Bank Balance List */
-.bank-list h4 { font-size: 0.95rem; margin-bottom: 15px; color: #4b5563; }
-.bank-list ul { list-style: none; }
-.bank-list li {
-    display: flex; justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px dashed #e5e7eb;
-    font-size: 0.9rem;
-}
-.bank-list li:last-child { border: none; }
-.bank-amount { font-weight: 700; }
-.pos { color: #059669; }
-.neg { color: #dc2626; }
+.panel-section { margin-bottom: 15px; }
+.btn-group { display: flex; gap: 10px; margin-top: 5px; }
+.import-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
 
 /* Responsive */
 @media (max-width: 900px) {
-    .charts-layout { grid-template-columns: 1fr; }
+    .main-content { grid-template-columns: 1fr; } /* Stack them on mobile */
+    .summary-cards { grid-template-columns: 1fr; }
 }
