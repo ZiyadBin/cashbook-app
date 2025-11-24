@@ -51,12 +51,15 @@ async function loadFullDashboard() {
     } catch (error) { console.error(error); }
 }
 
-// --- CHARTS ---
+
+// --- CHARTS (Updated with Safety Checks) ---
 function renderExpenseChart(data) {
+    if (!data) return; // Safety check
     const ctx = document.getElementById('expenseChart').getContext('2d');
     if (expenseChartInstance) expenseChartInstance.destroy();
+
     data.sort((a, b) => b.amount - a.amount);
-    
+    // ... rest of chart code
     expenseChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -72,9 +75,11 @@ function renderExpenseChart(data) {
 }
 
 function renderLendingChart(data) {
+    if (!data) return; // Safety check
     const ctx = document.getElementById('lendingChart').getContext('2d');
     if (lendingChartInstance) lendingChartInstance.destroy();
-    
+    // ... rest of chart code ...
+    // (Use the same chart code as before)
     lendingChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -82,7 +87,7 @@ function renderLendingChart(data) {
             datasets: [{
                 data: data.map(d => d.amount),
                 backgroundColor: data.map(d => d.amount >= 0 ? '#f59e0b' : '#ef4444'),
-                borderRadius: 4, barThickness: 20
+                borderRadius: 4
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
@@ -90,13 +95,13 @@ function renderLendingChart(data) {
 }
 
 function renderAssetChart(data) {
+    if (!data) return; // Safety check
+    // ... (Use previous asset chart code)
     const ctx = document.getElementById('assetChart').getContext('2d');
     if (assetChartInstance) assetChartInstance.destroy();
 
-    // Group by Remark (Investment Name) and Color by Category
     const labels = data.map(d => d.remark);
     const values = data.map(d => d.amount);
-    // Color logic: Savings = Purple, Investments = Blue (example)
     const colors = data.map(d => d.category.toLowerCase().includes('saving') ? '#8b5cf6' : '#3b82f6');
 
     assetChartInstance = new Chart(ctx, {
@@ -107,7 +112,7 @@ function renderAssetChart(data) {
                 label: 'Value',
                 data: values,
                 backgroundColor: colors,
-                borderRadius: 4, barThickness: 30
+                borderRadius: 4
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
@@ -115,10 +120,12 @@ function renderAssetChart(data) {
 }
 
 function renderMoneyOutChart(data) {
+    if (!data) return; // Safety check
+    // ... (Use previous money out chart code)
     const ctx = document.getElementById('moneyOutChart').getContext('2d');
     if (moneyOutChartInstance) moneyOutChartInstance.destroy();
     
-    data.sort((a, b) => b.amount - a.amount); // Sort desc
+    data.sort((a, b) => b.amount - a.amount); 
 
     moneyOutChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -127,7 +134,7 @@ function renderMoneyOutChart(data) {
             datasets: [{
                 label: 'Total Out',
                 data: data.map(d => d.amount),
-                backgroundColor: '#10b981', // Unified green color for money out
+                backgroundColor: '#10b981',
                 borderRadius: 4
             }]
         },
