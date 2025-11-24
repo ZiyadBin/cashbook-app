@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify, send_from_directory, make_response
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from datetime import datetime, date
+from datetime import datetime
 import os
-from sqlalchemy import func, distinct, extract
+from sqlalchemy import func, distinct
 import csv
 import io
 import openpyxl
@@ -23,11 +23,13 @@ bcrypt.init_app(app)
 jwt = JWTManager(app)
 CORS(app)
 
+# --- Database Setup ---
 @app.before_request
 def setup_database():
     if not hasattr(app, 'database_initialized'):
         with app.app_context():
             db.create_all()
+            # Create default user if not exists
             user = User.query.filter_by(username="ZIYAD").first()
             if not user:
                 default_user = User(username="ZIYAD")
@@ -40,7 +42,7 @@ def get_current_user_obj():
     username = get_jwt_identity()
     return User.query.filter_by(username=username).first()
 
-# --- Routes ---
+# --- Authentication ---
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -48,8 +50,10 @@ def login():
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
+        
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
+            
         token = authenticate_user(username, password)
         if token:
             return jsonify({'message': 'Login successful', 'access_token': token, 'username': username}), 200
@@ -58,121 +62,93 @@ def login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/transactions', methods=['GET'])
+# --- Transactions (CRUD + Filtered List) ---
+
+@app.route('/api/transactions', methods=['GET', 'POST'])
+@app.route('/api/transactions/<int:transaction_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
-def get_transactions():
+def handle_transactions(transaction_id=None):
     try:
         current_user = get_current_user_obj()
-        # Return ALL transactions (frontend will handle showing only 5)
-        user_transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).all()
-        return jsonify({'transactions': [t.to_dict() for t in user_transactions]}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/transactions', methods=['POST'])
-@jwt_required()
-def add_transaction():
-    try:
-        current_user = get_current_user_obj()
-        data = request.get_json()
-        
-        if data.get('date'):
-            try:
-                transaction_date = datetime.fromisoformat(data['date'])
-            except ValueError:
-                transaction_date = datetime.utcnow()
-        else:
-            transaction_date = datetime.utcnow()
-        
-        new_transaction = Transaction(
-            user_id=current_user.id,
-            type=data['type'],
-            amount=float(data['amount']),
-            category=data['category'],
-            remark=data.get('remark', ''),
-            bank_cash=data['bank_cash'],
-            date=transaction_date
-        )
-        db.session.add(new_transaction)
-        db.session.commit()
-        return jsonify({'message': 'Transaction added successfully', 'transaction': new_transaction.to_dict()}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
-@jwt_required()
-def update_transaction(transaction_id):
-    try:
-        current_user = get_current_user_obj()
-        data = request.get_json()
-        transaction = Transaction.query.get(transaction_id)
-        
-        if not transaction or transaction.user_id != current_user.id:
-            return jsonify({'error': 'Transaction not found'}), 404
-        
-        if data.get('date'):
-            try:
-                transaction.date = datetime.fromisoformat(data['date'])
-            except ValueError:
-                pass
-        
-        transaction.type = data['type']
-        transaction.amount = float(data['amount'])
-        transaction.category = data['category']
-        transaction.remark = data.get('remark', '')
-        transaction.bank_cash = data['bank_cash']
-        db.session.commit()
-        return jsonify({'message': 'Transaction updated successfully', 'transaction': transaction.to_dict()}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
-@jwt_required()
-def delete_transaction(transaction_id):
-    try:
-        current_user = get_current_user_obj()
-        transaction = Transaction.query.get(transaction_id)
-        if not transaction or transaction.user_id != current_user.id:
-            return jsonify({'error': 'Transaction not found'}), 404
-        db.session.delete(transaction)
-        db.session.commit()
-        return jsonify({'message': 'Transaction deleted successfully'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/summary', methods=['GET'])
-@jwt_required()
-def get_summary():
-    try:
-        current_user = get_current_user_obj()
-        
-        # Get current month and year
-        now = datetime.now()
-        current_month = now.month
-        current_year = now.year
-
-        # Filter by User AND Current Month AND Current Year
-        cash_in = db.session.query(func.sum(Transaction.amount)).filter_by(user_id=current_user.id, type='IN')\
-            .filter(extract('month', Transaction.date) == current_month)\
-            .filter(extract('year', Transaction.date) == current_year).scalar() or 0
+        # 1. GET LIST (With Filters)
+        if request.method == 'GET':
+            query = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc())
             
-        cash_out = db.session.query(func.sum(Transaction.amount)).filter_by(user_id=current_user.id, type='OUT')\
-            .filter(extract('month', Transaction.date) == current_month)\
-            .filter(extract('year', Transaction.date) == current_year).scalar() or 0
+            # Apply Filters (Matches Dashboard Logic)
+            type_f = request.args.get('type', 'ALL')
+            bank_f = request.args.get('bank', 'ALL')
+            cat_f = request.args.get('category', 'ALL')
+            start_d = request.args.get('startDate')
+            end_d = request.args.get('endDate')
+
+            if type_f != 'ALL': query = query.filter_by(type=type_f)
+            if bank_f != 'ALL': query = query.filter_by(bank_cash=bank_f)
+            if cat_f != 'ALL': query = query.filter_by(category=cat_f)
             
-        balance = cash_in - cash_out
-        
-        return jsonify({
-            'cash_in': cash_in,
-            'cash_out': cash_out,
-            'balance': balance,
-            'month_name': now.strftime("%B") # Return month name to display
-        }), 200
+            if start_d:
+                query = query.filter(Transaction.date >= datetime.fromisoformat(start_d))
+            if end_d:
+                e_date = datetime.fromisoformat(end_d).replace(hour=23, minute=59, second=59)
+                query = query.filter(Transaction.date <= e_date)
+
+            txns = query.all()
+            return jsonify({'transactions': [t.to_dict() for t in txns]}), 200
+
+        # 2. POST (Add New)
+        if request.method == 'POST':
+            data = request.get_json()
+            # Handle Date
+            if data.get('date'):
+                try: d = datetime.fromisoformat(data['date'])
+                except: d = datetime.utcnow()
+            else: d = datetime.utcnow()
+
+            new_t = Transaction(
+                user_id=current_user.id,
+                type=data['type'],
+                amount=float(data['amount']),
+                category=data['category'],
+                remark=data.get('remark', ''),
+                bank_cash=data['bank_cash'],
+                date=d
+            )
+            db.session.add(new_t)
+            db.session.commit()
+            return jsonify({'message': 'Added', 'transaction': new_t.to_dict()}), 201
+
+        # For PUT/DELETE, we need an ID
+        t = Transaction.query.get(transaction_id)
+        if not t or t.user_id != current_user.id:
+            return jsonify({'error': 'Not found'}), 404
+
+        # 3. DELETE
+        if request.method == 'DELETE':
+            db.session.delete(t)
+            db.session.commit()
+            return jsonify({'message': 'Deleted'}), 200
+
+        # 4. PUT (Update)
+        if request.method == 'PUT':
+            data = request.get_json()
+            if data.get('date'): 
+                try: t.date = datetime.fromisoformat(data['date'])
+                except: pass
+            
+            t.type = data['type']
+            t.amount = float(data['amount'])
+            t.category = data['category']
+            t.remark = data.get('remark', '')
+            t.bank_cash = data['bank_cash']
+            
+            db.session.commit()
+            return jsonify({'message': 'Updated', 'transaction': t.to_dict()}), 200
+
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+# --- Dashboard Analytics (The New Logic) ---
 
 @app.route('/api/dashboard')
 @jwt_required()
@@ -201,142 +177,136 @@ def get_dashboard():
         
         all_transactions = query.all()
         
-        # 2. Buckets
+        # 2. Definitions
         asset_keywords = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund', 'gold', 'pf', 'ppf']
         lending_keywords = ['lent', 'loan', 'given', 'borrowed']
         
-        # 3. Calculation Variables
-        total_income = 0
-        total_out = 0
+        # 3. NET Logic Implementation
         
-        expense_out = 0
-        asset_out = 0
-        lending_out = 0
-        lending_in = 0
+        # Buckets to track Net Values
+        lending_tracker = {} # Person -> Net Amount
+        expense_tracker = {} # Category -> Net Amount
+        asset_tracker = {}   # Category -> Net Amount
         
-        # Trackers for Charts
-        expense_map = {}
-        lending_map = {}
-        asset_details = [] # List of {category, amount, remark}
-        money_out_map = {} # For "Total Money Out" chart
+        # Cash Flow Totals
+        total_in_cashflow = 0
+        total_out_cashflow = 0
         
         for t in all_transactions:
             cat_lower = t.category.lower()
             
-            if t.type == 'IN':
-                total_income += t.amount
-                if cat_lower in lending_keywords:
-                    lending_in += t.amount
-                    person = t.remark.strip() if t.remark else "Unknown"
-                    if person not in lending_map: lending_map[person] = 0
-                    lending_map[person] -= t.amount
+            # Track Cash Flow (Absolute In/Out)
+            if t.type == 'IN': total_in_cashflow += t.amount
+            else: total_out_cashflow += t.amount
             
-            elif t.type == 'OUT':
-                total_out += t.amount
+            # --- Logic A: Lending ---
+            if cat_lower in lending_keywords:
+                person = t.remark.strip() if t.remark else "Unknown"
+                if person not in lending_tracker: lending_tracker[person] = 0
                 
-                # Check Category Type
-                if cat_lower in lending_keywords:
-                    lending_out += t.amount
-                    person = t.remark.strip() if t.remark else "Unknown"
-                    if person not in lending_map: lending_map[person] = 0
-                    lending_map[person] += t.amount
-                    
-                elif cat_lower in asset_keywords:
-                    asset_out += t.amount
-                    asset_details.append({
-                        'category': t.category,
-                        'amount': t.amount,
-                        'remark': t.remark or t.category
-                    })
-                    # Add to Money Out Chart
-                    if t.category not in money_out_map: money_out_map[t.category] = 0
-                    money_out_map[t.category] += t.amount
-                    
-                else:
-                    # Regular Expense
-                    expense_out += t.amount
-                    if t.category not in expense_map: expense_map[t.category] = 0
-                    expense_map[t.category] += t.amount
-                    # Add to Money Out Chart
-                    if t.category not in money_out_map: money_out_map[t.category] = 0
-                    money_out_map[t.category] += t.amount
+                if t.type == 'OUT': lending_tracker[person] += t.amount # We gave money
+                else: lending_tracker[person] -= t.amount # They paid back
 
-        # 4. Final Calculations
-        # Net Lent (Money currently with others)
-        net_lent = lending_out - lending_in
+            # --- Logic B: Assets ---
+            elif cat_lower in asset_keywords:
+                if t.category not in asset_tracker: asset_tracker[t.category] = 0
+                
+                if t.type == 'OUT': asset_tracker[t.category] += t.amount # Bought asset
+                else: asset_tracker[t.category] -= t.amount # Sold asset
+
+            # --- Logic C: Expenses ---
+            else:
+                if t.category not in expense_tracker: expense_tracker[t.category] = 0
+                
+                if t.type == 'OUT': expense_tracker[t.category] += t.amount # Spent
+                else: expense_tracker[t.category] -= t.amount # Refund/Cashback
+
+        # 4. Aggregation
         
-        # Total Net Assets = Money in Savings/Investments + Money owed to us
-        net_assets = asset_out + net_lent
+        # Net calculations for display
+        net_lent_total = sum(v for v in lending_tracker.values())
+        net_assets_total = sum(v for v in asset_tracker.values())
+        net_expense_total = sum(v for v in expense_tracker.values())
         
-        # Wallet Balance = Cash In - Cash Out
-        balance = total_income - total_out
+        # Balance is simple Cash Flow (Money I have right now)
+        current_balance = total_in_cashflow - total_out_cashflow
+        
+        # Total "Money Out" visualization (Net Exp + Net Assets + Net Lent)
+        total_money_out = net_expense_total + net_assets_total + net_lent_total
+
+        # Chart Data Preparation
+        # 1. Lending Chart (Person vs Amount)
+        lending_list = [{'person': k, 'amount': v} for k, v in lending_tracker.items() if v != 0]
+        
+        # 2. Asset Chart (Category vs Amount)
+        asset_list = []
+        for k, v in asset_tracker.items():
+            # Find a remark for this category to display if needed, or just use category
+            asset_list.append({'category': k, 'amount': v, 'remark': k}) 
+            
+        # 3. Expense Chart (Category vs Amount) - Only show positive expenses
+        expense_list = [{'category': k, 'amount': v} for k, v in expense_tracker.items() if v > 0]
+        
+        # 4. Money Out Chart (Expenses + Assets Categories)
+        money_out_list = expense_list + asset_list
 
         return jsonify({
             'summary': {
-                'income': total_income,
-                'expenses': expense_out,
-                'assets': net_assets,
-                'balance': balance
+                'income': total_in_cashflow, # Gross Income
+                'expenses': net_expense_total,
+                'assets': net_assets_total,
+                'lent': net_lent_total,
+                'balance': current_balance,
+                'total_money_out': total_money_out
             },
-            'expense_chart': [{'category': k, 'amount': v} for k, v in expense_map.items()],
-            'lending_chart': [{'person': k, 'amount': v} for k, v in lending_map.items() if v != 0],
-            'asset_chart': asset_details,
-            'money_out_chart': [{'category': k, 'amount': v} for k, v in money_out_map.items()]
+            'expense_chart': expense_list,
+            'lending_chart': lending_list,
+            'asset_chart': asset_list,
+            'money_out_chart': money_out_list
         }), 200
         
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/banks')
+# --- Helpers & Import ---
+
+@app.route('/api/banks', methods=['GET'])
 @jwt_required()
 def get_banks():
     try:
-        current_user = get_current_user_obj()
-        banks = db.session.query(distinct(Transaction.bank_cash)).filter_by(user_id=current_user.id).all()
+        banks = db.session.query(distinct(Transaction.bank_cash)).filter_by(user_id=get_current_user_obj().id).all()
         return jsonify([b[0] for b in banks]), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except: return jsonify([]), 200
 
-@app.route('/api/categories')
+@app.route('/api/categories', methods=['GET'])
 @jwt_required()
 def get_categories():
     try:
-        current_user = get_current_user_obj()
-        categories = db.session.query(distinct(Transaction.category)).filter_by(user_id=current_user.id).all()
-        return jsonify([c[0] for c in categories]), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        cats = db.session.query(distinct(Transaction.category)).filter_by(user_id=get_current_user_obj().id).all()
+        return jsonify([c[0] for c in cats]), 200
+    except: return jsonify([]), 200
 
-# --- Import Route ---
 @app.route('/api/import', methods=['POST'])
 @jwt_required()
 def import_transactions():
     try:
         current_user = get_current_user_obj()
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
+        if 'file' not in request.files: return jsonify({'error': 'No file'}), 400
         file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-
+        
         transactions_to_add = []
         
-        # Handle CSV
+        # CSV Import
         if file.filename.endswith('.csv'):
             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
             csv_reader = csv.DictReader(stream)
             for row in csv_reader:
-                # Basic validation logic
                 if row.get('Date') and row.get('Amount'):
                     try:
-                         # Try parsing date, fallback to now
                         t_date = datetime.utcnow()
-                        if row.get('Date'):
-                             try: t_date = datetime.strptime(row['Date'], '%d/%m/%Y, %I:%M %p') # Try Excel format
-                             except: 
-                                 try: t_date = datetime.fromisoformat(row['Date'])
-                                 except: pass
+                        try: t_date = datetime.fromisoformat(row['Date'])
+                        except: pass
                         
                         t = Transaction(
                             user_id=current_user.id,
@@ -348,10 +318,9 @@ def import_transactions():
                             date=t_date
                         )
                         transactions_to_add.append(t)
-                    except Exception as e:
-                        continue # Skip bad rows
+                    except: continue
 
-        # Handle Excel
+        # Excel Import
         elif file.filename.endswith(('.xls', '.xlsx')):
             wb = openpyxl.load_workbook(file)
             sheet = wb.active
@@ -359,14 +328,13 @@ def import_transactions():
             for row in sheet.iter_rows(min_row=2, values_only=True):
                 data = dict(zip(headers, row))
                 if data.get('Date') and data.get('Amount'):
-                    # Excel usually handles dates as objects, so simpler
                     t_date = data['Date'] if isinstance(data['Date'], datetime) else datetime.utcnow()
                     t = Transaction(
                         user_id=current_user.id,
                         type=data.get('Type', 'OUT'),
                         amount=float(data.get('Amount', 0)),
                         category=data.get('Category', 'Uncategorized'),
-                        remark=data.get('Remark', '') if data.get('Remark') else '',
+                        remark=data.get('Remark', '') or '',
                         bank_cash=data.get('Bank/Cash', 'Cash'),
                         date=t_date
                     )
@@ -375,14 +343,13 @@ def import_transactions():
         if transactions_to_add:
             db.session.add_all(transactions_to_add)
             db.session.commit()
-            return jsonify({'message': f'{len(transactions_to_add)} transactions imported successfully'}), 200
-        else:
-            return jsonify({'message': 'No valid transactions found in file'}), 400
+            return jsonify({'message': f'{len(transactions_to_add)} imported'}), 200
+        return jsonify({'message': 'No data found'}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# --- Frontend ---
+# --- Frontend Serving ---
 @app.route('/')
 def serve_index(): return send_from_directory('../frontend/pages', 'index.html')
 @app.route('/login')
