@@ -64,9 +64,8 @@ if (document.getElementById('loginForm')) {
 }
 
 // --- Load & Display Data ---
+// This is the critical function for the Home Page Summary
 async function loadSummary() {
-    if(!document.getElementById('cashIn')) return; // Skip if not on dashboard
-    
     try {
         const response = await fetch(`${API_BASE}/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
@@ -75,11 +74,12 @@ async function loadSummary() {
             document.getElementById('cashOut').textContent = `₹${data.cash_out.toFixed(2)}`;
             document.getElementById('balance').textContent = `₹${data.balance.toFixed(2)}`;
             
-            // Update month labels if they exist
+            // Ensure date labels are populated
+            const monthName = data.month_name || "Current Month";
             if(document.getElementById('currentMonthDisplay')) 
-                document.getElementById('currentMonthDisplay').textContent = data.month_name;
+                document.getElementById('currentMonthDisplay').textContent = monthName;
             if(document.getElementById('currentMonthDisplay2'))
-                document.getElementById('currentMonthDisplay2').textContent = data.month_name;
+                document.getElementById('currentMonthDisplay2').textContent = monthName;
         }
     } catch (error) { console.error('Summary error:', error); }
 }
