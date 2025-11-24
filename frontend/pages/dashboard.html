@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Financial Command Center</title>
+    <title>Analytics</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -39,7 +39,7 @@
             <div class="metric-card glass-panel"><div class="icon-box red"><i class="fa-solid fa-fire"></i></div>
                 <div class="text-box"><span class="label">Expenses</span><h2 id="dashExpense">₹0.00</h2></div></div>
             <div class="metric-card glass-panel"><div class="icon-box purple"><i class="fa-solid fa-piggy-bank"></i></div>
-                <div class="text-box"><span class="label">Net Assets</span><h2 id="dashAssets">₹0.00</h2><small class="hint">(Savings + Invest + Net Lent)</small></div></div>
+                <div class="text-box"><span class="label">Net Assets</span><h2 id="dashAssets">₹0.00</h2></div></div>
             <div class="metric-card glass-panel highlight-card"><div class="icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
                 <div class="text-box"><span class="label">Balance</span><h2 id="dashBalance">₹0.00</h2></div></div>
         </div>
@@ -64,11 +64,11 @@
 
         <div class="wide-charts-grid">
             <div class="chart-card glass-panel">
-                <div class="card-header"><h3><i class="fa-solid fa-sack-dollar"></i> Asset Details (Invest/Save)</h3></div>
+                <div class="card-header"><h3><i class="fa-solid fa-sack-dollar"></i> Asset Tracker</h3></div>
                 <div class="chart-wrapper"><canvas id="assetChart"></canvas></div>
             </div>
             <div class="chart-card glass-panel">
-                <div class="card-header"><h3><i class="fa-solid fa-money-bill-transfer"></i> Total Money Out (Exp + Asset)</h3></div>
+                <div class="card-header"><h3><i class="fa-solid fa-money-bill-transfer"></i> Cash Outflow (Exp + Asset)</h3></div>
                 <div class="chart-wrapper"><canvas id="moneyOutChart"></canvas></div>
             </div>
         </div>
@@ -97,47 +97,7 @@
     </div>
 
     <div id="editModal" class="modal">
-        <div class="modal-content glass-panel">
-            <span class="close">&times;</span>
-            <h2>Edit</h2>
-            <form id="editTransactionForm">
-                <input type="hidden" id="editTransactionId">
-                <div class="form-row full-width">
-                    <div class="form-group">
-                        <label>Date</label>
-                        <input type="datetime-local" id="editDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Type</label>
-                        <select id="editType" required>
-                            <option value="IN">IN</option>
-                            <option value="OUT">OUT</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Amount</label>
-                        <input type="number" id="editAmount" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <input type="text" id="editCategory" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Bank</label>
-                        <input type="text" id="editBankCash" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Remark</label>
-                        <input type="text" id="editRemark">
-                    </div>
-                </div>
-                <button type="submit" class="btn-primary">Update</button>
-            </form>
-        </div>
+        <div class="modal-content glass-panel"><span class="close">&times;</span><h2>Edit</h2><form id="editTransactionForm"><input type="hidden" id="editTransactionId"><div class="form-row full-width"><div class="form-group"><label>Date</label><input type="datetime-local" id="editDate" required></div><div class="form-group"><label>Type</label><select id="editType" required><option value="IN">IN</option><option value="OUT">OUT</option></select></div></div><div class="form-row"><div class="form-group"><label>Amount</label><input type="number" id="editAmount" step="0.01" required></div><div class="form-group"><label>Category</label><input type="text" id="editCategory" required></div></div><div class="form-row"><div class="form-group"><label>Bank</label><input type="text" id="editBankCash" required></div><div class="form-group"><label>Remark</label><input type="text" id="editRemark"></div></div><button type="submit" class="btn-primary">Update</button></form></div>
     </div>
 
     <script src="/js/script.js"></script>
