@@ -3,81 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cash Book - Secure Login</title>
-    
+    <title>Cash Book - Login</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body>
-    <div class="split-layout">
+
+    <input type="checkbox" id="toggle-light" name="toggle-light">
+
+    <div class="lamp-wrapper">
+        <div class="wire"></div>
+        <div class="bulb">
+            <div class="light-beam"></div>
+        </div>
+        <label for="toggle-light" class="lamp-switch" title="Turn on the light"></label>
+    </div>
+
+    <div class="knock-knock-text">
+        <h1>Knock, Knock...</h1>
+    </div>
+
+    <div class="login-container">
+        <h2><i class="fa-solid fa-wallet"></i> CashBook</h2>
+        <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 20px;">Sign in to access your ledger</p>
         
-        <div class="visual-side">
-            <div class="visual-content">
-                <div class="brand-logo">
-                    <i class="fa-solid fa-wallet"></i> CashBook
-                </div>
-                
-                <div class="hero-text">
-                    <h1>Smart Accounting <br><span>Made Simple.</span></h1>
-                    <p>Track your cash flow, analyze expenses, and visualize your financial growth with our secure, real-time ledger system.</p>
-                </div>
-
-                <div class="animation-container">
-                    <lottie-player 
-                        src="https://lottie.host/97599207-7592-4234-8330-6313967d82d2/7Q4lQ7z9L8.json" 
-                        background="transparent" 
-                        speed="1" 
-                        style="width: 100%; height: auto; max-width: 450px;" 
-                        loop 
-                        autoplay>
-                    </lottie-player>
-                </div>
-
-                <div class="features-pill">
-                    <span><i class="fa-solid fa-check-circle"></i> Secure Data</span>
-                    <span><i class="fa-solid fa-chart-pie"></i> Analytics</span>
-                    <span><i class="fa-solid fa-cloud"></i> Cloud Sync</span>
-                </div>
+        <form id="loginForm">
+            <div class="input-group">
+                <input type="text" id="username" required>
+                <label>Username</label>
             </div>
-        </div>
-
-        <div class="form-side">
-            <div class="form-wrapper glass-panel">
-                <div class="form-header">
-                    <h2>Welcome Back</h2>
-                    <p>Please enter your details to sign in.</p>
-                </div>
-
-                <form id="loginForm">
-                    <div class="input-group">
-                        <label>Username</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-regular fa-user"></i>
-                            <input type="text" id="username" placeholder="Enter your ID" required>
-                        </div>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Password</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-lock"></i>
-                            <input type="password" id="password" placeholder="••••••••" required>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary login-btn">
-                        Sign In <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                <div id="message" class="message"></div>
-                
-                <p class="footer-text">Protected by Enterprise Grade Security</p>
+            <div class="input-group">
+                <input type="password" id="password" required>
+                <label>Password</label>
             </div>
-        </div>
+            <button type="submit">Login</button>
+        </form>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <div class="instruction">
+        <span class="question">Who's there?</span>
+        <span class="hint"><i class="fa-regular fa-lightbulb"></i> (Click the light to find out)</span>
     </div>
 
     <script src="/js/script.js"></script>
