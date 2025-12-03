@@ -139,14 +139,19 @@ th:nth-child(7) { width: 13%; text-align: right;} td:last-child { text-align: ri
 /* --- WIDE CHARTS GRID (Updated to Single Column) --- */
 .wide-charts-grid {
     display: grid;
-    grid-template-columns: 1fr; /* Full Width */
+    grid-template-columns: 1fr; /* Force single column */
     gap: 20px;
     margin-bottom: 20px;
+    width: 100%; /* Ensure it takes full width */
 }
 
 .chart-wrapper {
-    position: relative; height: 300px; width: 100%;
-    display: flex; justify-content: center;
+    position: relative;
+    height: 350px; /* Slightly taller for better visibility */
+    width: 100%;
+    min-width: 0; /* Critical flexbox fix for chart.js resizing */
+    display: flex;
+    justify-content: center;
 }
 .chart-hint { text-align: center; color: #9ca3af; font-size: 0.8rem; margin-top: 10px; }
 
