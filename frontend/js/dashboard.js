@@ -88,6 +88,7 @@ function renderMoneyOutChart(data) {
     if(!data) return;
     const ctx = document.getElementById('moneyOutChart').getContext('2d');
     if (moneyOutChartInstance) moneyOutChartInstance.destroy();
+    
     data.sort((a, b) => b.amount - a.amount);
 
     moneyOutChartInstance = new Chart(ctx, {
@@ -98,10 +99,27 @@ function renderMoneyOutChart(data) {
                 label: 'Cash Outflow',
                 data: data.map(d => d.amount),
                 backgroundColor: '#10b981',
-                borderRadius: 4
+                borderRadius: 4,
+                barThickness: 'flex', // Allow bars to resize flexibily
+                maxBarThickness: 50   // Prevent them from getting too wide
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, // Critical for resizing
+            plugins: { 
+                legend: { display: false } 
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        autoSkip: false, // Show all labels if possible
+                        maxRotation: 45, // Rotate labels if they crowd
+                        minRotation: 0
+                    }
+                }
+            }
+        }
     });
 }
 
