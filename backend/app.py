@@ -128,110 +128,140 @@ def get_summary():
         }), 200
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- DASHBOARD ANALYTICS (Logic Fixed) ---
-@app.route('/api/dashboard', methods=['GET'])
+# --- Analytics Routes ---
+@app.route('/api/dashboard')
 @jwt_required()
 def get_dashboard():
     try:
         current_user = get_current_user_obj()
+        
+        # 1. Base Query with Filters
         query = Transaction.query.filter_by(user_id=current_user.id)
         
-        # Filters
-        if request.args.get('type') and request.args.get('type') != 'ALL':
-            query = query.filter_by(type=request.args.get('type'))
-        if request.args.get('bank') and request.args.get('bank') != 'ALL':
-            query = query.filter_by(bank_cash=request.args.get('bank'))
-        if request.args.get('category') and request.args.get('category') != 'ALL':
-            query = query.filter_by(category=request.args.get('category'))
-        if request.args.get('startDate'):
-            query = query.filter(Transaction.date >= datetime.fromisoformat(request.args.get('startDate')))
-        if request.args.get('endDate'):
-            e_date = datetime.fromisoformat(request.args.get('endDate')).replace(hour=23, minute=59)
+        type_filter = request.args.get('type', 'ALL')
+        bank_filter = request.args.get('bank', 'ALL')
+        cat_filter = request.args.get('category', 'ALL')
+        start_date = request.args.get('startDate', '')
+        end_date = request.args.get('endDate', '')
+        
+        # Note: We usually need ALL types to calculate Net properly, 
+        # so we apply type_filter at the end or for specific lists, 
+        # but for the main calculation loop, we iterate all to find pairs.
+        if bank_filter != 'ALL': query = query.filter_by(bank_cash=bank_filter)
+        if cat_filter != 'ALL': query = query.filter_by(category=cat_filter)
+        
+        if start_date:
+            query = query.filter(Transaction.date >= datetime.fromisoformat(start_date))
+        if end_date:
+            e_date = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
             query = query.filter(Transaction.date <= e_date)
+        
+        all_transactions = query.all()
+        
+        # 2. Definitions
+        asset_keywords = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund', 'gold', 'pf', 'ppf']
+        lending_keywords = ['lent', 'loan', 'given', 'borrowed']
+        
+        # 3. NET LOGIC CALCULATION
+        
+        lending_tracker = {} # Person -> Net Amount
+        expense_tracker = {} # Category -> Net Amount
+        asset_tracker = {}   # Category -> Net Amount
+        
+        total_income_cashflow = 0
+        total_out_cashflow = 0
+        
+        for t in all_transactions:
+            cat_lower = t.category.lower()
             
-        all_txns = query.all()
-        
-        # Definitions
-        assets_kw = ['savings', 'saving', 'investment', 'investments', 'asset', 'assets', 'sip', 'stocks', 'mutual fund', 'gold', 'pf', 'ppf']
-        lending_kw = ['lent', 'loan', 'given', 'borrowed']
-        
-        # Buckets
-        expense_map = {} # Category -> Amount
-        lending_map = {} # Person -> Amount
-        asset_list = []  # List of asset transactions
-        money_out_map = {} # Category -> Amount
-        
-        total_income = 0
-        
-        # Logic:
-        # Expenses = OUT (Expenses) - IN (Refunds)
-        # Lending = OUT (Given) - IN (Repaid)
-        # Assets = OUT (Bought) - IN (Sold)
-        
-        for t in all_txns:
-            cat = t.category.lower()
+            # Global Cash Flow (Absolute values for Wallet Balance)
+            if t.type == 'IN': total_income_cashflow += t.amount
+            else: total_out_cashflow += t.amount
             
-            # 1. LENDING
-            if cat in lending_kw:
-                p = t.remark.strip() if t.remark else "Unknown"
-                if p not in lending_map: lending_map[p] = 0
-                if t.type == 'OUT': lending_map[p] += t.amount
-                else: lending_map[p] -= t.amount
+            # --- CATEGORY ROUTING ---
+            
+            # A. Lending (Net Calculation)
+            if cat_lower in lending_keywords:
+                person = t.remark.strip() if t.remark else "Unknown"
+                if person not in lending_tracker: lending_tracker[person] = 0
                 
-            # 2. ASSETS
-            elif cat in assets_kw:
-                if t.type == 'OUT':
-                    asset_list.append({'category': t.category, 'amount': t.amount, 'remark': t.remark or t.category})
-                    # Add to Money Out Chart
-                    if t.category not in money_out_map: money_out_map[t.category] = 0
-                    money_out_map[t.category] += t.amount
-                # Note: Asset Withdrawals (IN) are usually treated as Income or reduction of asset, 
-                # for simplicity here we track OUT as 'Money put into assets'
-            
-            # 3. INCOME vs EXPENSES
-            else:
-                if t.type == 'IN':
-                    total_income += t.amount
-                    # If you want refunds to reduce expense, check logic here. 
-                    # Currently simply tracking Total Income.
-                    # If a refund happens, it's income.
-                else:
-                    # It's an Expense
-                    if t.category not in expense_map: expense_map[t.category] = 0
-                    expense_map[t.category] += t.amount
-                    
-                    if t.category not in money_out_map: money_out_map[t.category] = 0
-                    money_out_map[t.category] += t.amount
+                # OUT = Money given (+ Debt), IN = Money returned (- Debt)
+                if t.type == 'OUT': lending_tracker[person] += t.amount
+                else: lending_tracker[person] -= t.amount
 
-        # Aggregates
-        net_expenses = sum(expense_map.values()) # Sum of all expense categories
-        net_lent = sum(v for v in lending_map.values() if v > 0) # Only money owed TO you
-        net_assets = sum(a['amount'] for a in asset_list)
+            # B. Assets (Net Calculation)
+            elif cat_lower in asset_keywords:
+                if t.category not in asset_tracker: asset_tracker[t.category] = 0
+                
+                # OUT = Buy Asset (+ Asset), IN = Sell/Withdraw (- Asset)
+                if t.type == 'OUT': asset_tracker[t.category] += t.amount
+                else: asset_tracker[t.category] -= t.amount
+
+            # C. Expenses (Net Calculation)
+            else:
+                # This handles the "Friends" logic:
+                # OUT 500, IN 250 = Net Expense 250.
+                if t.category not in expense_tracker: expense_tracker[t.category] = 0
+                
+                if t.type == 'OUT': 
+                    expense_tracker[t.category] += t.amount
+                else: 
+                    # Type IN: Treat as refund/reduction of expense
+                    expense_tracker[t.category] -= t.amount
+
+        # 4. AGGREGATION FOR DISPLAY
         
-        total_money_out = net_expenses + net_assets
+        # Sum up Net Lending (Only positive = people owe you)
+        net_lent = sum(v for v in lending_tracker.values())
         
-        # Balance is essentially Income - Total Outflow (roughly)
-        # Or simply Cash In - Cash Out. 
-        # Let's use the accounting equation: Balance = Income - (Expenses + Assets + Net Lending Changes)
-        # For simplicity in this view:
-        balance = total_income - (net_expenses + net_assets + net_lent)
+        # Sum up Net Assets
+        net_assets = sum(v for v in asset_tracker.values())
+        
+        # Sum up Net Expenses 
+        # Only count positive values. If a category is negative (e.g. Salary), ignore it for "Expense" total.
+        net_expenses = sum(v for v in expense_tracker.values() if v > 0)
+        
+        # Total Money Out (Net Expenses + Net Assets + Net Lent)
+        total_money_out = net_expenses + net_assets + (net_lent if net_lent > 0 else 0)
+        
+        # Balance = Actual Cash In - Actual Cash Out (Wallet Reality)
+        balance = total_income_cashflow - total_out_cashflow
+
+        # 5. PREPARE CHART DATA
+        
+        # Expense Chart: Only show categories where Net Spend > 0
+        expense_list = [{'category': k, 'amount': v} for k, v in expense_tracker.items() if v > 0]
+        
+        # Lending Chart: Show net balance per person
+        lending_list = [{'person': k, 'amount': v} for k, v in lending_tracker.items() if v != 0]
+        
+        # Asset Chart
+        asset_list = []
+        for k, v in asset_tracker.items():
+            # Use Category as the label for colors, but Remark is not strictly needed for grouping here 
+            # unless you want to see specific investments. Let's keep it simple: Category.
+            asset_list.append({'category': k, 'amount': v, 'remark': k})
+            
+        # Money Out Chart (Expenses + Assets)
+        money_out_list = expense_list + [{'category': k, 'amount': v} for k, v in asset_tracker.items() if v > 0]
 
         return jsonify({
             'summary': {
-                'income': total_income,
-                'expenses': net_expenses, # Positive Number
+                'income': total_income_cashflow,
+                'expenses': net_expenses,
                 'assets': net_assets,
                 'lent': net_lent,
                 'balance': balance,
                 'total_money_out': total_money_out
             },
-            'expense_chart': [{'category': k, 'amount': v} for k, v in expense_map.items()],
-            'lending_chart': [{'person': k, 'amount': v} for k, v in lending_map.items() if v != 0],
+            'expense_chart': expense_list,
+            'lending_chart': lending_list,
             'asset_chart': asset_list,
-            'money_out_chart': [{'category': k, 'amount': v} for k, v in money_out_map.items()]
+            'money_out_chart': money_out_list
         }), 200
-
+        
     except Exception as e:
+        print(e)
         return jsonify({'error': str(e)}), 500
 
 # --- Helpers ---
