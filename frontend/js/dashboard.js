@@ -1,6 +1,5 @@
 let expenseChartInstance = null;
 let lendingChartInstance = null;
-let assetChartInstance = null;
 let moneyOutChartInstance = null;
 let allTransactions = [];
 let displayedCount = 10;
@@ -37,8 +36,7 @@ async function loadFullDashboard() {
 
             renderExpenseChart(data.expense_chart);
             renderLendingChart(data.lending_chart);
-            renderAssetChart(data.asset_chart);
-            renderMoneyOutChart(data.money_out_chart);
+            renderMoneyOutChart(data.money_out_chart); // Asset chart removed
 
             allTransactions = histData.transactions;
             displayedCount = 10;
@@ -83,30 +81,6 @@ function renderLendingChart(data) {
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
-    });
-}
-
-function renderAssetChart(data) {
-    if(!data) return;
-    const ctx = document.getElementById('assetChart').getContext('2d');
-    if (assetChartInstance) assetChartInstance.destroy();
-
-    // X Axis = Remark (Name of investment), Color = Category
-    const labels = data.map(d => d.remark);
-    const values = data.map(d => d.amount);
-    const colors = data.map(d => d.category.toLowerCase().includes('saving') ? '#8b5cf6' : '#3b82f6');
-
-    assetChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderRadius: 4, barThickness: 30
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 }
 
