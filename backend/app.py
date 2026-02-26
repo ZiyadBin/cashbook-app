@@ -304,6 +304,49 @@ def import_transactions():
         return jsonify({'message': 'No data'}), 400
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- USER MANAGEMENT ROUTES ---
+
+@app.route('/api/user/change-password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    try:
+        current_user = get_current_user_obj()
+        data = request.get_json()
+        new_password = data.get('new_password')
+        
+        if not new_password or len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+            
+        current_user.set_password(new_password)
+        db.session.commit()
+        return jsonify({'message': 'Password updated successfully!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user/create', methods=['POST'])
+@jwt_required()
+def create_new_user():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+            
+        # Check if user already exists
+        if User.query.filter(User.username.ilike(username)).first():
+            return jsonify({'error': 'Username already exists'}), 400
+            
+        new_user = User(username=username)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({'message': f'User {username} created successfully!'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # --- Frontend ---
 @app.route('/')
 def serve_index(): return send_from_directory('../frontend/pages', 'index.html')
