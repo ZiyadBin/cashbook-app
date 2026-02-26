@@ -176,3 +176,43 @@ function resetFilters() {
     ['typeFilter','bankFilter','catFilter'].forEach(i=>document.getElementById(i).value='ALL');
     loadFullDashboard();
 }
+// --- USER MANAGEMENT ---
+
+async function changePassword() {
+    const newPassword = document.getElementById('newPasswordInput').value;
+    if (!newPassword || newPassword.length < 6) return alert("Password must be at least 6 characters.");
+
+    try {
+        const res = await fetch(`${API_BASE}/user/change-password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ new_password: newPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert("Password updated successfully!");
+            document.getElementById('newPasswordInput').value = '';
+            document.getElementById('settingsModal').style.display = 'none';
+        } else alert(data.error || "Failed to update password");
+    } catch (e) { console.error(e); alert("An error occurred"); }
+}
+
+async function createNewUser() {
+    const username = document.getElementById('newUsernameInput').value;
+    const password = document.getElementById('newUserPasswordInput').value;
+    if (!username || !password) return alert("Please fill in both fields.");
+
+    try {
+        const res = await fetch(`${API_BASE}/user/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message);
+            document.getElementById('newUsernameInput').value = '';
+            document.getElementById('newUserPasswordInput').value = '';
+        } else alert(data.error || "Failed to create user");
+    } catch (e) { console.error(e); alert("An error occurred"); }
+}
