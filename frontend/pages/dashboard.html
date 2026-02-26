@@ -13,6 +13,7 @@
         <header class="glass-header">
             <div class="brand"><i class="fa-solid fa-chart-column"></i><h1>Analytics</h1></div>
             <div class="user-info">
+                <button onclick="document.getElementById('settingsModal').style.display='block'" class="btn-secondary small-btn"><i class="fa-solid fa-gear"></i> Settings</button>
                 <button onclick="location.href='/'" class="btn-secondary small-btn"><i class="fa-solid fa-arrow-left"></i> Back</button>
             </div>
         </header>
@@ -93,7 +94,28 @@
     </div>
 
     <div id="editModal" class="modal">
-        <div class="modal-content glass-panel"><span class="close">&times;</span><h2>Edit</h2><form id="editTransactionForm"><input type="hidden" id="editTransactionId"><div class="form-row full-width"><div class="form-group"><label>Date</label><input type="datetime-local" id="editDate" required></div><div class="form-group"><label>Type</label><select id="editType" required><option value="IN">IN</option><option value="OUT">OUT</option></select></div></div><div class="form-row"><div class="form-group"><label>Amount</label><input type="number" id="editAmount" step="0.01" required></div><div class="form-group"><label>Category</label><input type="text" id="editCategory" required></div></div><div class="form-row"><div class="form-group"><label>Bank</label><input type="text" id="editBankCash" required></div><div class="form-group"><label>Remark</label><input type="text" id="editRemark"></div></div><button type="submit" class="btn-primary">Update</button></form></div>
+        <div class="modal-content glass-panel"><span class="close" onclick="document.getElementById('editModal').style.display='none'">&times;</span><h2>Edit</h2><form id="editTransactionForm"><input type="hidden" id="editTransactionId"><div class="form-row full-width"><div class="form-group"><label>Date</label><input type="datetime-local" id="editDate" required></div><div class="form-group"><label>Type</label><select id="editType" required><option value="IN">IN</option><option value="OUT">OUT</option></select></div></div><div class="form-row"><div class="form-group"><label>Amount</label><input type="number" id="editAmount" step="0.01" required></div><div class="form-group"><label>Category</label><input type="text" id="editCategory" required></div></div><div class="form-row"><div class="form-group"><label>Bank</label><input type="text" id="editBankCash" required></div><div class="form-group"><label>Remark</label><input type="text" id="editRemark"></div></div><button type="submit" class="btn-primary">Update</button></form></div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 400px;">
+            <span class="close" onclick="document.getElementById('settingsModal').style.display='none'">&times;</span>
+            
+            <h2><i class="fa-solid fa-lock"></i> Change Password</h2>
+            <div class="form-group" style="margin-top: 15px;">
+                <input type="password" id="newPasswordInput" placeholder="Enter new password (min 6 chars)" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box;">
+                <button onclick="changePassword()" class="btn-primary" style="margin-top: 10px; width: 100%;">Update Password</button>
+            </div>
+
+            <hr style="margin: 25px 0; border: 0; border-top: 1px dashed #cbd5e1;">
+
+            <h2><i class="fa-solid fa-user-plus"></i> Create New User</h2>
+            <div class="form-group" style="margin-top: 15px;">
+                <input type="text" id="newUsernameInput" placeholder="New Username" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box;">
+                <input type="password" id="newUserPasswordInput" placeholder="New User's Password" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box;">
+                <button onclick="createNewUser()" class="btn-secondary" style="margin-top: 10px; width: 100%;">Create User</button>
+            </div>
+        </div>
     </div>
 
     <script src="/js/script.js"></script>
