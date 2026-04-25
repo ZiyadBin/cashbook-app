@@ -365,6 +365,7 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port)
 
 @app.route("/reset-password")
+@app.route("/api/reset-password")
 def reset_password():
     from models import User
     from extensions import db
